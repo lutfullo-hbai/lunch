@@ -19,7 +19,7 @@ RUN uv sync --frozen --no-dev
 
 COPY . .
 
-RUN useradd --create-home --uid 1000 appuser && chown -R appuser /app
+RUN useradd --create-home --uid 1000 appuser && mkdir -p /app/media && chown -R appuser /app
 USER appuser
 
 EXPOSE 8000

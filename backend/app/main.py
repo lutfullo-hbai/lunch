@@ -2,9 +2,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api import health
 from app.api.v1 import api_router
+from app.core.body_buffer import SignedBodyBufferMiddleware
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import setup_logging
@@ -31,6 +33,9 @@ def create_app() -> FastAPI:
         openapi_url=None if settings.is_production else "/openapi.json",
     )
     app.add_middleware(
+        SignedBodyBufferMiddleware, max_body_bytes=settings.max_request_mb * 1024 * 1024
+    )
+    app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
         allow_credentials=False,
@@ -48,6 +53,10 @@ def create_app() -> FastAPI:
     register_error_handlers(app)
     app.include_router(health.router)
     app.include_router(api_router, prefix=settings.api_prefix)
+
+    # Yuklangan rasmlar. Production'da bu papkani nginx to'g'ridan-to'g'ri bersa yaxshiroq.
+    settings.media_dir.mkdir(parents=True, exist_ok=True)
+    app.mount(settings.media_url_prefix, StaticFiles(directory=settings.media_dir), name="media")
     return app
 
 

@@ -1,6 +1,7 @@
 """Ilova sozlamalari. Barcha qiymatlar muhit o'zgaruvchilaridan (.env) olinadi."""
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, SecretStr
@@ -26,6 +27,18 @@ class Settings(BaseSettings):
     refresh_token_ttl_days: int = Field(default=7, ge=1)
     bcrypt_rounds: int = Field(default=12, ge=4, le=16)
     password_min_length: int = Field(default=8, ge=6)
+
+    # Imzolangan so'rov tanasining maksimal hajmi (rasm yuklashni ham hisobga oladi).
+    max_request_mb: int = Field(default=6, ge=1)
+
+    # --- Rasmlar ---
+    media_dir: Path = Path("media")
+    media_url_prefix: str = "/media"
+    image_max_upload_mb: int = Field(default=5, ge=1)
+    image_max_pixels: int = Field(default=40_000_000, ge=1)  # "decompression bomb"dan himoya
+    image_size: int = Field(default=1200, ge=100)
+    image_thumb_size: int = Field(default=400, ge=50)
+    image_quality: int = Field(default=85, ge=1, le=100)
 
     # --- Sahifalash ---
     page_size_default: int = Field(default=20, ge=1)

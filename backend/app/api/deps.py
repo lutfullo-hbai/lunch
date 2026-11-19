@@ -8,6 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.body_buffer import RAW_BODY_STATE_KEY
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.security import decode_access_token, derive_signing_key
@@ -60,7 +61,9 @@ async def _verify_signature(request: Request, signing_key: str, nonces: NonceSto
         path = f"{path}?{request.url.query}"
     expected = compute_signature(
         signing_key,
-        build_string_to_sign(request.method, path, timestamp, nonce, await request.body()),
+        build_string_to_sign(
+            request.method, path, timestamp, nonce, getattr(request.state, RAW_BODY_STATE_KEY, b"")
+        ),
     )
     if not hmac.compare_digest(expected, signature):
         raise _unauthorized("SIGNATURE_INVALID", "So'rov imzosi noto'g'ri")

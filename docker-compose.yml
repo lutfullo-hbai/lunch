@@ -27,6 +27,9 @@ services:
         condition: service_healthy
     ports:
       - "127.0.0.1:${API_HOST_PORT:-8080}:8000"
+    volumes:
+      - media_data:/app/media
 
 volumes:
   pg_data:
+  media_data:

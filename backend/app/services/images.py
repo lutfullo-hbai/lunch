@@ -1,0 +1,107 @@
+"""Rasmlarni tekshirish, WebP'ga o'girish va diskka saqlash.
+
+Har bir rasm uchun ikki fayl saqlanadi:
+    menu/2026/11/<uuid>.webp        katta (IMAGE_SIZE)
+    menu/2026/11/<uuid>_thumb.webp  kichik (IMAGE_THUMB_SIZE)
+Bazada faqat katta faylning nisbiy yo'li saqlanadi.
+"""
+
+import io
+import uuid
+from datetime import UTC, datetime
+from pathlib import Path, PurePosixPath
+
+from fastapi import UploadFile, status
+from PIL import Image, ImageOps, UnidentifiedImageError
+from starlette.concurrency import run_in_threadpool
+
+from app.core.config import get_settings
+from app.core.errors import AppError
+
+ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
+OUTPUT_EXTENSION = ".webp"
+THUMB_SUFFIX = "_thumb"
+
+
+def _invalid_image(message: str) -> AppError:
+    return AppError(status.HTTP_422_UNPROCESSABLE_CONTENT, "INVALID_IMAGE", message)
+
+
+def thumb_path(image_path: str) -> str:
+    path = PurePosixPath(image_path)
+    return str(path.with_name(f"{path.stem}{THUMB_SUFFIX}{path.suffix}"))
+
+
+def public_url(relative_path: str | None) -> str | None:
+    if relative_path is None:
+        return None
+    return f"{get_settings().media_url_prefix.rstrip('/')}/{relative_path}"
+
+
+async def _read_limited(upload: UploadFile) -> bytes:
+    max_bytes = get_settings().image_max_upload_mb * 1024 * 1024
+    data = await upload.read(max_bytes + 1)
+    if len(data) > max_bytes:
+        raise AppError(
+            status.HTTP_413_CONTENT_TOO_LARGE,
+            "IMAGE_TOO_LARGE",
+            f"Rasm hajmi {get_settings().image_max_upload_mb} MB dan oshmasligi kerak",
+        )
+    if not data:
+        raise _invalid_image("Fayl bo'sh")
+    return data
+
+
+def _resize_to_webp(image: Image.Image, max_side: int, quality: int) -> bytes:
+    copy = image.copy()
+    copy.thumbnail((max_side, max_side))
+    buffer = io.BytesIO()
+    copy.save(buffer, format="WEBP", quality=quality)
+    return buffer.getvalue()
+
+
+def _process(data: bytes) -> tuple[bytes, bytes]:
+    """Rasmni tekshiradi va (katta, kichik) WebP baytlarini qaytaradi."""
+    settings = get_settings()
+    Image.MAX_IMAGE_PIXELS = settings.image_max_pixels
+    try:
+        with Image.open(io.BytesIO(data)) as probe:
+            if probe.format not in ALLOWED_FORMATS:
+                raise _invalid_image("Faqat JPEG, PNG yoki WebP rasm qabul qilinadi")
+            probe.verify()  # fayl buzilmaganini tekshiradi
+        with Image.open(io.BytesIO(data)) as source:
+            image = ImageOps.exif_transpose(source)
+            if image.mode not in ("RGB", "RGBA"):
+                image = image.convert("RGBA" if "A" in image.getbands() else "RGB")
+            return (
+                _resize_to_webp(image, settings.image_size, settings.image_quality),
+                _resize_to_webp(image, settings.image_thumb_size, settings.image_quality),
+            )
+    except (UnidentifiedImageError, Image.DecompressionBombError, OSError, SyntaxError) as exc:
+        raise _invalid_image("Fayl rasm emas yoki buzilgan") from exc
+
+
+def _write(relative_path: str, content: bytes) -> None:
+    target = get_settings().media_dir / relative_path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(content)
+
+
+async def save_menu_image(upload: UploadFile) -> str:
+    """Rasmni saqlaydi va bazaga yoziladigan nisbiy yo'lni qaytaradi."""
+    data = await _read_limited(upload)
+    large, thumb = await run_in_threadpool(_process, data)
+
+    now = datetime.now(UTC)
+    relative = f"menu/{now:%Y}/{now:%m}/{uuid.uuid4().hex}{OUTPUT_EXTENSION}"
+    await run_in_threadpool(_write, relative, large)
+    await run_in_threadpool(_write, thumb_path(relative), thumb)
+    return relative
+
+
+def delete_image(relative_path: str | None) -> None:
+    if not relative_path:
+        return
+    media_dir = get_settings().media_dir
+    for path in (relative_path, thumb_path(relative_path)):
+        Path(media_dir, path).unlink(missing_ok=True)
