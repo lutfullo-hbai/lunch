@@ -3,6 +3,7 @@
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -15,6 +16,8 @@ class Settings(BaseSettings):
     environment: Literal["development", "test", "staging", "production"] = "development"
     log_level: str = "INFO"
     api_prefix: str = "/api/v1"
+    # Sana filtrlari (masalan "bugungi buyurtmalar") shu zonada hisoblanadi.
+    timezone: str = "Asia/Tashkent"
 
     database_url: str
     db_pool_size: int = Field(default=5, ge=1)
@@ -58,6 +61,10 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def tz(self) -> ZoneInfo:
+        return ZoneInfo(self.timezone)
 
     @property
     def is_production(self) -> bool:

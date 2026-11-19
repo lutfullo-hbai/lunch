@@ -5,8 +5,11 @@ from fastapi import APIRouter, Query
 from app.api.deps import DbSession
 from app.models.enums import UserRole
 from app.schemas.common import Page, Pagination
+from app.schemas.order import OrderOut
 from app.schemas.user import AdminUserOut, UserStatusUpdate
+from app.services import orders as orders_service
 from app.services import users as service
+from app.services.orders import OrderFilters
 
 router = APIRouter(prefix="/users", tags=["admin: users"])
 
@@ -25,6 +28,12 @@ async def list_users(
 @router.get("/{user_id}")
 async def get_user(user_id: int, db: DbSession) -> AdminUserOut:
     return await service.get_user(db, user_id)
+
+
+@router.get("/{user_id}/orders")
+async def user_orders(user_id: int, db: DbSession, page: Pagination) -> Page[OrderOut]:
+    await service.get_user(db, user_id)  # user yo'q bo'lsa 404
+    return await orders_service.list_orders(db, page, OrderFilters(user_id=user_id))
 
 
 @router.patch("/{user_id}/status")
