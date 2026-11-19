@@ -3,7 +3,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +18,22 @@ class Settings(BaseSettings):
     database_url: str
     db_pool_size: int = Field(default=5, ge=1)
     db_max_overflow: int = Field(default=10, ge=0)
+
+    # --- Auth ---
+    jwt_secret: SecretStr = Field(min_length=32)
+    jwt_algorithm: str = "HS256"
+    access_token_ttl_minutes: int = Field(default=1440, ge=1)  # 1 kun
+    refresh_token_ttl_days: int = Field(default=7, ge=1)
+    bcrypt_rounds: int = Field(default=12, ge=4, le=16)
+    password_min_length: int = Field(default=8, ge=6)
+
+    # --- So'rov imzosi (HMAC-SHA256) ---
+    signature_max_skew_seconds: int = Field(default=60, ge=1)
+
+    # --- Super admin (ilova ishga tushganda yaratiladi) ---
+    super_admin_email: str | None = None
+    super_admin_password: SecretStr | None = None
+    super_admin_full_name: str = "Super Admin"
 
     # Vergul bilan ajratilgan ro'yxat: "https://a.uz,https://b.uz"
     cors_origins: str = ""
