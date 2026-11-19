@@ -228,3 +228,41 @@ def test_nonce_store_expires_old_entries(monkeypatch):
     clock[0] += 11
     assert store.use("b") is True
     assert store.use("a") is True  # muddati o'tdi, xotiradan chiqarildi
+
+
+async def test_delete_stale_sessions(db):
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import select
+
+    from app.models import RefreshToken, User
+    from app.services.auth import delete_stale_sessions
+
+    user = User(email="eski@example.com", password_hash="x", full_name="Eski")
+    db.add(user)
+    await db.flush()
+    now = datetime.now(UTC)
+    old = now - timedelta(days=get_settings().token_retention_days + 1)
+    db.add_all(
+        [
+            RefreshToken(user_id=user.id, token_hash="a" * 64, expires_at=old),
+            RefreshToken(
+                user_id=user.id,
+                token_hash="b" * 64,
+                expires_at=now + timedelta(days=1),
+                revoked_at=old,
+            ),
+            RefreshToken(
+                user_id=user.id,
+                token_hash="c" * 64,
+                expires_at=now + timedelta(days=1),
+                revoked_at=now,
+            ),
+            RefreshToken(user_id=user.id, token_hash="d" * 64, expires_at=now + timedelta(days=1)),
+        ]
+    )
+    await db.flush()
+
+    assert await delete_stale_sessions(db) == 2
+    left = await db.scalars(select(RefreshToken.token_hash).where(RefreshToken.user_id == user.id))
+    assert sorted(h[0] for h in left) == ["c", "d"]  # yaqinda bekor qilingan va faol qoldi

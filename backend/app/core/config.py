@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     # Shu vaqt ichida almashtirilgan token qayta kelsa, bu o'g'irlik emas, parallel
     # so'rov deb hisoblanadi (masalan ikki tab bir vaqtda refresh qildi).
     refresh_reuse_grace_seconds: int = Field(default=30, ge=0)
+    # Eskirgan va bekor qilingan sessiyalar shuncha kundan keyin bazadan o'chiriladi.
+    token_retention_days: int = Field(default=30, ge=1)
     bcrypt_rounds: int = Field(default=12, ge=4, le=16)
     password_min_length: int = Field(default=8, ge=6)
 

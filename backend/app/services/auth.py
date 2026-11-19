@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from fastapi import status
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -195,6 +195,22 @@ async def revoke_all_sessions(db: AsyncSession, user_id: int) -> None:
         .where(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None))
         .values(revoked_at=_now())
     )
+
+
+async def delete_stale_sessions(db: AsyncSession) -> int:
+    """Muddati o'tgan yoki bekor qilinganiga TOKEN_RETENTION_DAYS bo'lgan sessiyalarni o'chiradi.
+
+    Bekor qilingan qatorlar darhol o'chirilmaydi: ular token qayta ishlatilishini
+    (o'g'irlikni) aniqlash uchun kerak.
+    """
+    cutoff = _now() - timedelta(days=get_settings().token_retention_days)
+    result = await db.execute(
+        delete(RefreshToken).where(
+            or_(RefreshToken.expires_at < cutoff, RefreshToken.revoked_at < cutoff)
+        )
+    )
+    await db.commit()
+    return result.rowcount or 0
 
 
 async def ensure_super_admin(db: AsyncSession) -> User | None:

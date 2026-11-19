@@ -25,6 +25,7 @@ from app.core.signature import (
 from app.db.session import get_db
 from app.models import RefreshToken, User
 from app.models.enums import UserRole
+from app.services.auth import user_inactive
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 
@@ -105,7 +106,7 @@ async def get_auth_context(
 
     user = await db.get(User, claims.user_id)
     if user is None or not user.is_active:
-        raise AppError(status.HTTP_403_FORBIDDEN, "USER_INACTIVE", "Hisob bloklangan")
+        raise user_inactive()
     return AuthContext(user=user, session=session)
 
 
