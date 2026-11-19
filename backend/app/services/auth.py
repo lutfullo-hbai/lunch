@@ -213,21 +213,32 @@ async def delete_stale_sessions(db: AsyncSession) -> int:
     return result.rowcount or 0
 
 
+class SuperAdminEmailTakenError(Exception):
+    """SUPER_ADMIN_EMAIL oddiy (admin bo'lmagan) userga tegishli."""
+
+
 async def ensure_super_admin(db: AsyncSession) -> User | None:
-    """`.env` dagi super adminni yaratadi yoki uni admin holatiga keltiradi."""
+    """`.env` dagi super adminni faqat yangi akkaunt sifatida yaratadi.
+
+    Shu email bilan oddiy user allaqachon bo'lsa, u admin qilinmaydi: email
+    tasdiqlanmaydi, demak uni begona odam oldindan ro'yxatdan o'tkazgan bo'lishi mumkin.
+    """
     settings = get_settings()
     if not settings.super_admin_email or settings.super_admin_password is None:
         return None
 
     user = await get_user_by_email(db, settings.super_admin_email)
-    if user is None:
-        user = User(
-            email=settings.super_admin_email.lower(),
-            full_name=settings.super_admin_full_name,
-            password_hash=hash_password(settings.super_admin_password.get_secret_value()),
-        )
-        db.add(user)
-    user.role = UserRole.ADMIN
-    user.is_active = True
+    if user is not None:
+        if user.role is not UserRole.ADMIN:
+            raise SuperAdminEmailTakenError(settings.super_admin_email)
+        return user  # oldingi ishga tushishda yaratilgan, o'zgartirilmaydi
+
+    user = User(
+        email=settings.super_admin_email.lower(),
+        full_name=settings.super_admin_full_name,
+        password_hash=hash_password(settings.super_admin_password.get_secret_value()),
+        role=UserRole.ADMIN,
+    )
+    db.add(user)
     await db.commit()
     return user
