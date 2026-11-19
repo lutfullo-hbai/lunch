@@ -206,3 +206,19 @@ async def test_media_served_as_webp(media_dir):
         response = await c.get(f"{get_settings().media_url_prefix}/menu/x.webp")
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/webp"
+
+
+@pytest.mark.filterwarnings("ignore::PIL.Image.DecompressionBombWarning")
+async def test_upload_rejects_too_many_pixels(client, admin, category, monkeypatch):
+    item = await create_item(client, admin, category)
+    # 40x40 = 1600 px: chegaradan oshadi, lekin Pillow'ning o'z 2x chegarasidan oshmaydi.
+    monkeypatch.setattr(get_settings(), "image_max_pixels", 1000)
+    response = await upload(client, admin, item["id"], png_bytes(size=(40, 40)))
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "INVALID_IMAGE"
+
+
+async def test_upload_to_missing_item_writes_nothing(client, admin, media_dir):
+    response = await upload(client, admin, 999999, png_bytes())
+    assert response.status_code == 404
+    assert list(media_dir.rglob("*.webp")) == []

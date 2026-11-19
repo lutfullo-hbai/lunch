@@ -63,11 +63,16 @@ def _resize_to_webp(image: Image.Image, max_side: int, quality: int) -> bytes:
 def _process(data: bytes) -> tuple[bytes, bytes]:
     """Rasmni tekshiradi va (katta, kichik) WebP baytlarini qaytaradi."""
     settings = get_settings()
+    # Pillow o'zi faqat 2 x MAX_IMAGE_PIXELS da xato beradi, shuning uchun o'lchamni
+    # pikselga ochishdan oldin (faqat sarlavhadan) o'zimiz aniq tekshiramiz.
     Image.MAX_IMAGE_PIXELS = settings.image_max_pixels
     try:
         with Image.open(io.BytesIO(data)) as probe:
             if probe.format not in ALLOWED_FORMATS:
                 raise _invalid_image("Faqat JPEG, PNG yoki WebP rasm qabul qilinadi")
+            width, height = probe.size
+            if width * height > settings.image_max_pixels:
+                raise _invalid_image("Rasm o'lchami (piksellar soni) juda katta")
             probe.verify()  # fayl buzilmaganini tekshiradi
         with Image.open(io.BytesIO(data)) as source:
             image = ImageOps.exif_transpose(source)

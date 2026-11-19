@@ -118,9 +118,28 @@ async def delete_item(db: AsyncSession, item_id: int) -> None:
     await db.commit()
 
 
+async def _lock_item(db: AsyncSession, item_id: int) -> MenuItem:
+    """Rasm almashtirishda qatorni qulflaydi: parallel ikki yuklash eski faylni
+    ikki marta o'chirib, yangisini yetim qoldirmasin."""
+    item = await db.scalar(
+        select(MenuItem)
+        .where(MenuItem.id == item_id, MenuItem.deleted_at.is_(None))
+        .with_for_update()
+    )
+    if item is None:
+        raise _not_found()
+    return item
+
+
 async def set_image(db: AsyncSession, item_id: int, upload: UploadFile) -> MenuItem:
-    item = await get_item(db, item_id)
+    await get_item(db, item_id)  # yo'q bo'lsa rasmni bekorga ishlamaslik uchun
+    # Rasm qulfdan oldin qayta ishlanadi: og'ir ish paytida qator band turmasin.
     new_path = await images.save_menu_image(upload)
+    try:
+        item = await _lock_item(db, item_id)
+    except Exception:
+        images.delete_image(new_path)
+        raise
     old_path, item.image_path = item.image_path, new_path
     try:
         await db.commit()
@@ -132,7 +151,7 @@ async def set_image(db: AsyncSession, item_id: int, upload: UploadFile) -> MenuI
 
 
 async def remove_image(db: AsyncSession, item_id: int) -> MenuItem:
-    item = await get_item(db, item_id)
+    item = await _lock_item(db, item_id)
     old_path, item.image_path = item.image_path, None
     await db.commit()
     images.delete_image(old_path)

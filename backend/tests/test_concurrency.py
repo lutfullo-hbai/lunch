@@ -41,3 +41,39 @@ async def test_parallel_register_same_email_returns_409(live_client):
         ),
     )
     assert sorted(r.status_code for r in responses) == [201, 409]
+
+
+async def test_parallel_image_uploads_leave_no_orphans(live_client, tmp_path, monkeypatch):
+    from decimal import Decimal
+
+    from sqlalchemy import delete
+
+    from app.db.session import SessionFactory
+    from app.models import Category, MenuItem, User
+    from app.models.enums import UserRole
+    from tests.test_admin_menu import png_bytes, upload
+
+    monkeypatch.setattr(get_settings(), "media_dir", tmp_path)
+    admin = await register(live_client, email=f"admin@{LIVE_EMAIL_DOMAIN}")
+    async with SessionFactory() as session:
+        user = await session.get(User, admin["user"]["id"])
+        user.role = UserRole.ADMIN
+        category = Category(name=f"Parallel {admin['user']['id']}")
+        item = MenuItem(category=category, name="Palov", price=Decimal("45000"))
+        session.add(item)
+        await session.commit()
+        item_id, category_id = item.id, category.id
+
+    try:
+        responses = await asyncio.gather(
+            upload(live_client, admin, item_id, png_bytes()),
+            upload(live_client, admin, item_id, png_bytes()),
+        )
+        assert [r.status_code for r in responses] == [200, 200]
+        # Faqat oxirgi rasm va uning thumb'i qoladi.
+        assert len(list(tmp_path.rglob("*.webp"))) == 2
+    finally:
+        async with SessionFactory() as session:
+            await session.execute(delete(MenuItem).where(MenuItem.id == item_id))
+            await session.execute(delete(Category).where(Category.id == category_id))
+            await session.commit()
