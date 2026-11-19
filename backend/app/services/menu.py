@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.errors import AppError
+from app.db.query import contains
 from app.models import Category, MenuItem
 from app.schemas.common import Page, PageParams
 from app.schemas.menu import MenuItemCreate, MenuItemOut, MenuItemUpdate
@@ -64,7 +65,7 @@ async def list_items(
     if category_id is not None:
         query = query.where(MenuItem.category_id == category_id)
     if search:
-        query = query.where(MenuItem.name.ilike(f"%{search.strip()}%"))
+        query = query.where(contains(MenuItem.name, search))
     if is_available is not None:
         query = query.where(MenuItem.is_available == is_available)
 

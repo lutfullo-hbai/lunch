@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     # --- Sahifalash ---
     page_size_default: int = Field(default=20, ge=1)
     page_size_max: int = Field(default=100, ge=1)
+    page_number_max: int = Field(default=10_000, ge=1)  # juda katta OFFSET'dan himoya
 
     # --- So'rov imzosi (HMAC-SHA256) ---
     signature_max_skew_seconds: int = Field(default=60, ge=1)

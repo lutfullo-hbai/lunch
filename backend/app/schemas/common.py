@@ -1,9 +1,10 @@
 from typing import Annotated
 
-from fastapi import Depends, Query
+from fastapi import Depends, Query, status
 from pydantic import BaseModel
 
 from app.core.config import get_settings
+from app.core.errors import AppError
 
 
 class Page[T](BaseModel):
@@ -27,6 +28,12 @@ def _page_params(
     size: Annotated[int | None, Query(ge=1)] = None,
 ) -> PageParams:
     settings = get_settings()
+    if page > settings.page_number_max:
+        raise AppError(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "PAGE_OUT_OF_RANGE",
+            f"page {settings.page_number_max} dan oshmasligi kerak",
+        )
     size = min(size or settings.page_size_default, settings.page_size_max)
     return PageParams(page=page, size=size)
 

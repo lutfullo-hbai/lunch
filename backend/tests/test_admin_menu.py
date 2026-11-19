@@ -222,3 +222,20 @@ async def test_upload_to_missing_item_writes_nothing(client, admin, media_dir):
     response = await upload(client, admin, 999999, png_bytes())
     assert response.status_code == 404
     assert list(media_dir.rglob("*.webp")) == []
+
+
+async def test_search_treats_wildcards_literally(client, admin, category):
+    await create_item(client, admin, category, name="Palov")
+    await create_item(client, admin, category, name="100% mol go'shti")
+
+    percent = (await signed_request(client, admin, "GET", "/admin/menu?search=%25")).json()
+    underscore = (await signed_request(client, admin, "GET", "/admin/menu?search=_")).json()
+    assert [i["name"] for i in percent["items"]] == ["100% mol go'shti"]
+    assert underscore["total"] == 0
+
+
+async def test_page_number_limit(client, admin):
+    too_far = get_settings().page_number_max + 1
+    response = await signed_request(client, admin, "GET", f"/admin/menu?page={too_far}")
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "PAGE_OUT_OF_RANGE"

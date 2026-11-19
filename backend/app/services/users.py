@@ -5,6 +5,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
+from app.db.query import contains
 from app.models import Order, User
 from app.models.enums import UserRole
 from app.schemas.common import Page, PageParams
@@ -39,9 +40,12 @@ async def list_users(
 ) -> Page[AdminUserOut]:
     query = select(User)
     if search:
-        pattern = f"%{search.strip()}%"
         query = query.where(
-            or_(User.email.ilike(pattern), User.full_name.ilike(pattern), User.phone.ilike(pattern))
+            or_(
+                contains(User.email, search),
+                contains(User.full_name, search),
+                contains(User.phone, search),
+            )
         )
     if role is not None:
         query = query.where(User.role == role)

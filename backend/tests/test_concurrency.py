@@ -77,3 +77,57 @@ async def test_parallel_image_uploads_leave_no_orphans(live_client, tmp_path, mo
             await session.execute(delete(MenuItem).where(MenuItem.id == item_id))
             await session.execute(delete(Category).where(Category.id == category_id))
             await session.commit()
+
+
+async def test_parallel_status_changes_only_one_wins(live_client):
+    from decimal import Decimal
+
+    from sqlalchemy import delete
+
+    from app.db.session import SessionFactory
+    from app.models import Category, MenuItem, Order, OrderItem, User
+    from app.models.enums import PaymentMethod, UserRole
+
+    admin = await register(live_client, email=f"boss@{LIVE_EMAIL_DOMAIN}")
+    async with SessionFactory() as session:
+        user = await session.get(User, admin["user"]["id"])
+        user.role = UserRole.ADMIN
+        item = MenuItem(category=Category(name=f"Lock {user.id}"), name="Osh", price=Decimal("1"))
+        order = Order(
+            user_id=user.id,
+            total_price=Decimal("1"),
+            payment_method=PaymentMethod.CASH,
+            phone="+998900000000",
+            address="Toshkent",
+            items=[
+                OrderItem(
+                    menu_item=item, name_snapshot="Osh", price_snapshot=Decimal("1"), quantity=1
+                )
+            ],
+        )
+        session.add(order)
+        await session.commit()
+        order_id, item_id, category_id = order.id, item.id, item.category_id
+
+    try:
+        path = f"/admin/orders/{order_id}/status"
+        responses = await asyncio.gather(
+            signed_request(live_client, admin, "PATCH", path, {"status": "accepted"}),
+            signed_request(live_client, admin, "PATCH", path, {"status": "cancelled"}),
+        )
+        # Qulf so'rovlarni navbatga qo'yadi, ikkinchisi birinchisining natijasini ko'radi:
+        # accepted -> cancelled mumkin (ikkalasi 200), cancelled -> accepted esa 409.
+        ok = [r.json()["status"] for r in responses if r.status_code == 200]
+        detail = await signed_request(live_client, admin, "GET", f"/admin/orders/{order_id}")
+        final = detail.json()["status"]
+        if len(ok) == 2:
+            assert final == "cancelled"
+        else:
+            assert [r.status_code for r in responses].count(409) == 1
+            assert final == ok[0]
+    finally:
+        async with SessionFactory() as session:
+            await session.execute(delete(Order).where(Order.id == order_id))
+            await session.execute(delete(MenuItem).where(MenuItem.id == item_id))
+            await session.execute(delete(Category).where(Category.id == category_id))
+            await session.commit()
