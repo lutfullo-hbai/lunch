@@ -5,8 +5,12 @@ from pathlib import Path
 from typing import Literal
 from zoneinfo import ZoneInfo
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# bcrypt faqat birinchi 72 baytni hisobga oladi (bcrypt 5 esa uzunrog'ida xato beradi).
+# Bu algoritm cheklovi, sozlama emas.
+BCRYPT_MAX_BYTES = 72
 
 
 class Settings(BaseSettings):
@@ -60,6 +64,13 @@ class Settings(BaseSettings):
 
     # Vergul bilan ajratilgan ro'yxat: "https://a.uz,https://b.uz"
     cors_origins: str = ""
+
+    @field_validator("super_admin_password")
+    @classmethod
+    def check_admin_password(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None and len(value.get_secret_value().encode()) > BCRYPT_MAX_BYTES:
+            raise ValueError(f"SUPER_ADMIN_PASSWORD {BCRYPT_MAX_BYTES} baytdan oshmasligi kerak")
+        return value
 
     @property
     def cors_origin_list(self) -> list[str]:

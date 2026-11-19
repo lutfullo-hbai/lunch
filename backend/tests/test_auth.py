@@ -1,5 +1,7 @@
 import time
 
+import pytest
+
 from app.core.config import get_settings
 from tests.helpers import register, signed_headers, signed_request
 
@@ -163,3 +165,27 @@ async def test_reuse_within_grace_keeps_sessions(client):
     )
     assert again.json()["error"]["code"] == "REFRESH_TOKEN_ROTATED"
     assert (await signed_request(client, rotated, "GET", "/me")).status_code == 200
+
+
+@pytest.mark.parametrize("email", ["ali@example.com", "yoq@example.com"])
+async def test_login_multibyte_long_password_is_422_not_500(client, email):
+    await register(client)
+    # 72 belgi, lekin 144 bayt: belgi bo'yicha tekshirilsa bcrypt 500 berardi.
+    response = await client.post(f"{API}/auth/login", json={"email": email, "password": "ж" * 72})
+    assert response.status_code == 422
+
+
+def test_verify_password_rejects_over_limit_without_error():
+    from app.core.config import BCRYPT_MAX_BYTES
+    from app.core.security import hash_password, verify_password
+
+    assert verify_password("a" * (BCRYPT_MAX_BYTES + 1), hash_password("secret-pass")) is False
+
+
+def test_super_admin_password_over_limit_rejected():
+    from pydantic import ValidationError
+
+    from app.core.config import Settings
+
+    with pytest.raises(ValidationError):
+        Settings(super_admin_password="ж" * 40)

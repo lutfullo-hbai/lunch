@@ -10,10 +10,7 @@ from datetime import UTC, datetime, timedelta
 import bcrypt
 import jwt
 
-from app.core.config import get_settings
-
-# bcrypt faqat birinchi 72 baytni hisobga oladi, uzunroq parollarni qabul qilmaymiz.
-BCRYPT_MAX_BYTES = 72
+from app.core.config import BCRYPT_MAX_BYTES, get_settings
 
 
 def hash_password(password: str) -> str:
@@ -22,7 +19,10 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return bcrypt.checkpw(password.encode(), password_hash.encode())
+    encoded = password.encode()
+    if len(encoded) > BCRYPT_MAX_BYTES:
+        return False  # bunday parol hech qachon saqlanmagan, bcrypt esa xato beradi
+    return bcrypt.checkpw(encoded, password_hash.encode())
 
 
 def hash_token(token: str) -> str:
