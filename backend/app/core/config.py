@@ -42,6 +42,8 @@ class Settings(BaseSettings):
 
     # Imzolangan so'rov tanasining maksimal hajmi (rasm yuklashni ham hisobga oladi).
     max_request_mb: int = Field(default=6, ge=1)
+    # Imzosiz so'rovlar (login, register, refresh) kichik JSON, katta body kerak emas.
+    max_unsigned_request_kb: int = Field(default=64, ge=1)
 
     # --- Rasmlar ---
     media_dir: Path = Path("media")

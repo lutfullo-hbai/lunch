@@ -1,8 +1,10 @@
-"""Imzolangan so'rov tanasini (body) oldindan o'qib saqlaydigan ASGI middleware.
+"""So'rov tanasi (body) hajmini cheklaydigan va uni oldindan o'qib saqlaydigan ASGI middleware.
 
-FastAPI multipart (fayl) so'rovni dependency'lardan oldin o'qib yuboradi, shundan keyin
-imzo tekshiruvi tanani qayta o'qiy olmaydi. Middleware tanani bir marta o'qiydi,
-`scope["state"]` ga saqlaydi va ilovaga qayta uzatadi. Hajm chegarasi ham shu yerda.
+- Har bir so'rovga chegara qo'yiladi: imzolanganiga MAX_REQUEST_MB (rasm yuklash),
+  imzosiziga (login, register) MAX_UNSIGNED_REQUEST_KB. Chegara ilova body'ni
+  o'qishidan oldin tekshiriladi, katta so'rov oxirigacha o'qilmaydi.
+- Body `scope["state"]` ga saqlanadi: FastAPI multipart'ni dependency'lardan oldin
+  o'qib yuboradi, imzo tekshiruvi esa aynan shu baytlarni ishlatadi.
 """
 
 import json
@@ -16,16 +18,27 @@ RAW_BODY_STATE_KEY = "raw_body"
 _SIGNATURE_HEADER = SIGNATURE_HEADER.lower().encode()
 
 
-class SignedBodyBufferMiddleware:
-    def __init__(self, app: ASGIApp, max_body_bytes: int) -> None:
+class BodyLimitMiddleware:
+    def __init__(self, app: ASGIApp, signed_max_bytes: int, unsigned_max_bytes: int) -> None:
         self.app = app
-        self.max_body_bytes = max_body_bytes
+        self.signed_max_bytes = signed_max_bytes
+        self.unsigned_max_bytes = unsigned_max_bytes
+
+    def _limit(self, headers: dict[bytes, bytes]) -> int:
+        return self.signed_max_bytes if _SIGNATURE_HEADER in headers else self.unsigned_max_bytes
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http" or not any(
-            name == _SIGNATURE_HEADER for name, _ in scope["headers"]
-        ):
+        if scope["type"] != "http":
             await self.app(scope, receive, send)
+            return
+
+        headers = dict(scope["headers"])
+        limit = self._limit(headers)
+
+        # Mijoz hajmni oldindan aytgan bo'lsa, birorta bayt o'qimasdan rad etamiz.
+        declared = headers.get(b"content-length")
+        if declared is not None and declared.isdigit() and int(declared) > limit:
+            await _reject_too_large(send)
             return
 
         chunks: list[bytes] = []
@@ -37,8 +50,8 @@ class SignedBodyBufferMiddleware:
                 return
             chunk = message.get("body", b"")
             size += len(chunk)
-            if size > self.max_body_bytes:
-                await self._reject_too_large(send)
+            if size > limit:  # Content-Length yo'q yoki yolg'on bo'lsa
+                await _reject_too_large(send)
                 return
             chunks.append(chunk)
             more_body = message.get("more_body", False)
@@ -57,19 +70,20 @@ class SignedBodyBufferMiddleware:
 
         await self.app(scope, replay, send)
 
-    @staticmethod
-    async def _reject_too_large(send: Send) -> None:
-        content = json.dumps(
-            error_body("REQUEST_TOO_LARGE", "So'rov hajmi juda katta"), ensure_ascii=False
-        ).encode()
-        await send(
-            {
-                "type": "http.response.start",
-                "status": 413,
-                "headers": [
-                    (b"content-type", b"application/json"),
-                    (b"content-length", str(len(content)).encode()),
-                ],
-            }
-        )
-        await send({"type": "http.response.body", "body": content})
+
+async def _reject_too_large(send: Send) -> None:
+    content = json.dumps(
+        error_body("REQUEST_TOO_LARGE", "So'rov hajmi juda katta"), ensure_ascii=False
+    ).encode()
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 413,
+            "headers": [
+                (b"content-type", b"application/json"),
+                (b"content-length", str(len(content)).encode()),
+                (b"connection", b"close"),
+            ],
+        }
+    )
+    await send({"type": "http.response.body", "body": content})

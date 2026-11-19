@@ -10,6 +10,13 @@ Barcha yo'llar `API_PREFIX` (default `/api/v1`) bilan boshlanadi. To'liq va doim
 
 Frontend `code` bo'yicha ishlaydi, `message` foydalanuvchiga ko'rsatish uchun.
 
+## So'rov hajmi
+
+- **Imzolangan so'rov:** `MAX_REQUEST_MB` gacha. Rasm yuklash shunga kiradi.
+- **Imzosiz so'rov:** `MAX_UNSIGNED_REQUEST_KB` gacha. Bular login, register va refresh.
+
+Chegaradan katta so'rov `413 REQUEST_TOO_LARGE` bilan rad etiladi. Production'da nginx'ga ham `client_max_body_size` qo'ying.
+
 ## Auth
 
 | Endpoint | Imzo | Javob |

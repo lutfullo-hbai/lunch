@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api import health
 from app.api.v1 import api_router
-from app.core.body_buffer import SignedBodyBufferMiddleware
+from app.core.body_buffer import BodyLimitMiddleware
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import setup_logging
@@ -35,7 +35,9 @@ def create_app() -> FastAPI:
         openapi_url=None if settings.is_production else "/openapi.json",
     )
     app.add_middleware(
-        SignedBodyBufferMiddleware, max_body_bytes=settings.max_request_mb * 1024 * 1024
+        BodyLimitMiddleware,
+        signed_max_bytes=settings.max_request_mb * 1024 * 1024,
+        unsigned_max_bytes=settings.max_unsigned_request_kb * 1024,
     )
     app.add_middleware(
         CORSMiddleware,
