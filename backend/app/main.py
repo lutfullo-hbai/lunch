@@ -8,6 +8,7 @@ from app.api.v1 import api_router
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import setup_logging
+from app.core.signature import NONCE_HEADER, SIGNATURE_HEADER, TIMESTAMP_HEADER, NonceStore
 from app.db.session import engine
 
 
@@ -34,8 +35,16 @@ def create_app() -> FastAPI:
         allow_origins=settings.cors_origin_list,
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-        allow_headers=["Authorization", "Content-Type", "X-Timestamp", "X-Nonce", "X-Signature"],
+        allow_headers=[
+            "Authorization",
+            "Content-Type",
+            TIMESTAMP_HEADER,
+            NONCE_HEADER,
+            SIGNATURE_HEADER,
+        ],
     )
+    # Nonce timestamp oralig'ining ikki tomoni (o'tmish va kelajak) davomida saqlanadi.
+    app.state.nonce_store = NonceStore(ttl_seconds=2 * settings.signature_max_skew_seconds)
     register_error_handlers(app)
     app.include_router(health.router)
     app.include_router(api_router, prefix=settings.api_prefix)
