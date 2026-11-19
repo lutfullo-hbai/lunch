@@ -72,3 +72,9 @@ async def test_deleting_category_keeps_menu_item(db):
     await db.flush()
     await db.refresh(item)
     assert item.category_id is None
+
+
+async def test_email_unique_case_insensitive(db):
+    db.add_all([make_user("ali@example.com"), make_user("ALI@example.com")])
+    with pytest.raises(IntegrityError):
+        await db.flush()

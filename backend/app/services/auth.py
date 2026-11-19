@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from fastapi import status
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -93,14 +94,18 @@ async def _issue_tokens(db: AsyncSession, user: User) -> IssuedTokens:
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
-    return await db.scalar(select(User).where(User.email == email.lower()))
+    return await db.scalar(select(User).where(func.lower(User.email) == email.lower()))
+
+
+def email_taken() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT, "EMAIL_TAKEN", "Bu email allaqachon ro'yxatdan o'tgan"
+    )
 
 
 async def register(db: AsyncSession, data: RegisterIn) -> IssuedTokens:
     if await get_user_by_email(db, data.email):
-        raise AppError(
-            status.HTTP_409_CONFLICT, "EMAIL_TAKEN", "Bu email allaqachon ro'yxatdan o'tgan"
-        )
+        raise email_taken()
 
     user = User(
         email=data.email,
@@ -109,7 +114,12 @@ async def register(db: AsyncSession, data: RegisterIn) -> IssuedTokens:
         last_login_at=_now(),
     )
     db.add(user)
-    await db.flush()
+    try:
+        # Bir emailga parallel ikki so'rov: tekshiruvdan ikkalasi o'tsa, indeks ushlaydi.
+        await db.flush()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise email_taken() from exc
     tokens = await _issue_tokens(db, user)
     await db.commit()
     return tokens
