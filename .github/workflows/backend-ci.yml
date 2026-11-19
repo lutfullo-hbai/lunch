@@ -46,5 +46,6 @@ jobs:
           uv run alembic upgrade head
           uv run alembic downgrade base
           uv run alembic upgrade head
+          uv run alembic check
       - name: Testlar
         run: uv run pytest -q
