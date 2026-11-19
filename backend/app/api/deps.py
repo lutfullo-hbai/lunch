@@ -18,6 +18,7 @@ from app.core.signature import (
     TIMESTAMP_HEADER,
     NonceStore,
     build_string_to_sign,
+    canonical_path,
     compute_signature,
     is_timestamp_fresh,
 )
@@ -52,13 +53,16 @@ async def _verify_signature(request: Request, signing_key: str, nonces: NonceSto
     signature = request.headers.get(SIGNATURE_HEADER)
     if not (timestamp and nonce and signature):
         raise _unauthorized("SIGNATURE_MISSING", "So'rov imzosi yo'q")
+    if len(nonce) > get_settings().nonce_max_length:
+        raise _unauthorized("SIGNATURE_INVALID", "Nonce juda uzun")
 
     if not is_timestamp_fresh(timestamp, get_settings().signature_max_skew_seconds):
         raise _unauthorized("SIGNATURE_EXPIRED", "So'rov vaqti eskirgan")
 
-    path = request.url.path
-    if request.url.query:
-        path = f"{path}?{request.url.query}"
+    # Dekodlangan path emas, mijoz yuborgan xom baytlar: %2F, %0A kabi belgilar
+    # imzo matnini o'zgartira olmaydi.
+    raw_path = request.scope.get("raw_path") or request.scope["path"].encode()
+    path = canonical_path(raw_path, request.scope.get("query_string", b""))
     expected = compute_signature(
         signing_key,
         build_string_to_sign(

@@ -56,6 +56,7 @@ class Settings(BaseSettings):
 
     # --- So'rov imzosi (HMAC-SHA256) ---
     signature_max_skew_seconds: int = Field(default=60, ge=1)
+    nonce_max_length: int = Field(default=128, ge=16)
 
     # --- Super admin (ilova ishga tushganda yaratiladi) ---
     super_admin_email: str | None = None

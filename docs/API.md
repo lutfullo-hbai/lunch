@@ -43,9 +43,13 @@ string_to_sign = METHOD + "\n" + PATH + "\n" + X-Timestamp + "\n" + X-Nonce + "\
 ```
 
 - `PATH` prefix bilan birga, query bo'lsa `?` va query ham qo'shiladi: `/api/v1/admin/menu?page=2`.
+- `PATH` va query aynan HTTP so'rovda yuboriladigan ko'rinishda imzolanadi (`%20` kabi kodlangan belgilar ham shundayligicha). Query'ni yuborishdan oldin yasang, keyin imzolang.
+- Proxy (nginx) path yoki query'ni o'zgartirmasligi kerak: prefix qirqilmaydi va URL qayta kodlanmaydi. Aks holda imzo mos kelmaydi.
 - Body bo'lmasa, bo'sh satrning SHA256 hashi olinadi.
 - Fayl yuklashda yuboriladigan multipart baytlarning o'zi imzolanadi.
+- Nonce uzunligi `NONCE_MAX_LENGTH` gacha bo'lishi kerak (tavsiya: 32 ta hex belgi).
 - Vaqt farqi `SIGNATURE_MAX_SKEW_SECONDS` dan oshsa yoki nonce takrorlansa, so'rov 401 bilan rad etiladi.
+- **Cheklov:** ishlatilgan nonce'lar server xotirasida saqlanadi, shuning uchun API bitta worker bilan ishlaydi (`scripts/start.sh`). Bir nechta worker yoki server kerak bo'lsa, `NonceStore` umumiy omborga (Redis) o'tkazilishi kerak.
 
 Xato kodlari: `SIGNATURE_MISSING`, `SIGNATURE_EXPIRED`, `SIGNATURE_INVALID`, `SIGNATURE_REPLAYED`, `SESSION_REVOKED`.
 

@@ -189,3 +189,42 @@ def test_super_admin_password_over_limit_rejected():
 
     with pytest.raises(ValidationError):
         Settings(super_admin_password="ж" * 40)
+
+
+async def test_signature_too_long_nonce(client):
+    tokens = await register(client)
+    headers = signed_headers(tokens, "GET", f"{API}/me")
+    headers["X-Nonce"] = "n" * (get_settings().nonce_max_length + 1)
+    response = await client.get(f"{API}/me", headers=headers)
+    assert response.json()["error"]["code"] == "SIGNATURE_INVALID"
+
+
+async def test_signature_covers_query_string(client):
+    tokens = await register(client)
+    headers = signed_headers(tokens, "GET", f"{API}/me?a=1")
+    # Imzo `?a=1` uchun berilgan, query o'zgartirilsa rad etiladi.
+    response = await client.get(f"{API}/me?a=2", headers=headers)
+    assert response.json()["error"]["code"] == "SIGNATURE_INVALID"
+
+
+async def test_signature_uses_raw_encoded_path(client):
+    tokens = await register(client)
+    # Mijoz %-kodlangan yo'l yuborsa, aynan shu baytlar imzolanadi.
+    raw = f"{API}/m%65"  # server uchun bu /me
+    headers = signed_headers(tokens, "GET", raw)
+    response = await client.get(raw, headers=headers)
+    assert response.status_code == 200, response.text
+
+
+def test_nonce_store_expires_old_entries(monkeypatch):
+    from app.core import signature
+
+    clock = [1000.0]
+    monkeypatch.setattr(signature.time, "monotonic", lambda: clock[0])
+    store = signature.NonceStore(ttl_seconds=10)
+
+    assert store.use("a") is True
+    assert store.use("a") is False
+    clock[0] += 11
+    assert store.use("b") is True
+    assert store.use("a") is True  # muddati o'tdi, xotiradan chiqarildi
