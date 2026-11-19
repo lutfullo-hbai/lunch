@@ -7,6 +7,7 @@ Telegram Web App orqali ovqat buyurtma qilish tizimi: menyu, savat, naqd yoki ka
 - [Umumiy reja](docs/UMUMIY_REJA.md)
 - [Texnik reja](docs/TEXNIK_REJA.md)
 - [Login va admin panel rejasi](docs/LOGIN_ADMIN_REJA.md)
+- [API qo'llanma](docs/API.md)
 - [Jamoada ishlash qoidalari](CONTRIBUTING.md)
 
 ## Ishga tushirish (Docker)
