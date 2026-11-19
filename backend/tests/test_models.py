@@ -54,3 +54,21 @@ async def test_order_with_items(db):
 
     assert order.status is OrderStatus.NEW
     assert order.notify_status is NotifyStatus.PENDING
+
+
+async def test_category_name_unique_case_insensitive(db):
+    db.add_all([Category(name="Osh"), Category(name="OSH")])
+    with pytest.raises(IntegrityError):
+        await db.flush()
+
+
+async def test_deleting_category_keeps_menu_item(db):
+    category = Category(name="Eski")
+    item = MenuItem(category=category, name="Somsa", price=Decimal("8000"))
+    db.add(item)
+    await db.flush()
+
+    await db.delete(category)
+    await db.flush()
+    await db.refresh(item)
+    assert item.category_id is None

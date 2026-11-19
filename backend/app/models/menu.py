@@ -6,10 +6,13 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
     Text,
+    func,
+    text,
     true,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -19,9 +22,13 @@ from app.db.base import Base, TimestampMixin
 
 class Category(TimestampMixin, Base):
     __tablename__ = "categories"
+    __table_args__ = (
+        # Nom katta-kichik harfdan qat'i nazar unique: "Osh" va "OSH" bir xil.
+        Index("uq_categories_name_lower", func.lower(text("name")), unique=True),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(100), unique=True)
+    name: Mapped[str] = mapped_column(String(100))
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
 
@@ -35,8 +42,9 @@ class MenuItem(TimestampMixin, Base):
     __table_args__ = (CheckConstraint("price > 0", name="price_positive"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    category_id: Mapped[int] = mapped_column(
-        ForeignKey("categories.id", ondelete="RESTRICT"), index=True
+    # Kategoriya o'chirilsa, unga bog'langan (oldin o'chirilgan) ovqatlarda NULL bo'ladi.
+    category_id: Mapped[int | None] = mapped_column(
+        ForeignKey("categories.id", ondelete="SET NULL"), index=True
     )
     name: Mapped[str] = mapped_column(String(150))
     description: Mapped[str | None] = mapped_column(Text)
@@ -46,4 +54,4 @@ class MenuItem(TimestampMixin, Base):
     is_available: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    category: Mapped[Category] = relationship(back_populates="items")
+    category: Mapped[Category | None] = relationship(back_populates="items")

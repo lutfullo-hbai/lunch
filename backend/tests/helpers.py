@@ -50,3 +50,15 @@ async def register(
     )
     assert response.status_code == 201, response.text
     return response.json()
+
+
+async def admin_tokens(client: AsyncClient, db) -> dict:
+    """Admin rolidagi user yaratib, uning tokenlarini qaytaradi."""
+    from app.models import User
+    from app.models.enums import UserRole
+
+    tokens = await register(client, email="admin@example.com")
+    user = await db.get(User, tokens["user"]["id"])
+    user.role = UserRole.ADMIN
+    await db.commit()
+    return tokens

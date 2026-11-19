@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     bcrypt_rounds: int = Field(default=12, ge=4, le=16)
     password_min_length: int = Field(default=8, ge=6)
 
+    # --- Sahifalash ---
+    page_size_default: int = Field(default=20, ge=1)
+    page_size_max: int = Field(default=100, ge=1)
+
     # --- So'rov imzosi (HMAC-SHA256) ---
     signature_max_skew_seconds: int = Field(default=60, ge=1)
 
