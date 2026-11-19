@@ -192,3 +192,17 @@ async def test_request_body_limit(client, db, admin, category, monkeypatch):
         response = await upload(c, admin, item["id"], b"0" * (2 * 1024 * 1024))
     assert response.status_code == 413
     assert response.json()["error"]["code"] == "REQUEST_TOO_LARGE"
+
+
+async def test_media_served_as_webp(media_dir):
+    from httpx import ASGITransport, AsyncClient
+
+    from app.main import create_app
+
+    (media_dir / "menu").mkdir()
+    Image.new("RGB", (10, 10)).save(media_dir / "menu" / "x.webp", format="WEBP")
+    app = create_app()  # media papkasi ilova yaratilganda ulanadi
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        response = await c.get(f"{get_settings().media_url_prefix}/menu/x.webp")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/webp"

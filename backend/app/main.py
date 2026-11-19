@@ -1,3 +1,4 @@
+import mimetypes
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -12,6 +13,7 @@ from app.core.errors import register_error_handlers
 from app.core.logging import setup_logging
 from app.core.signature import NONCE_HEADER, SIGNATURE_HEADER, TIMESTAMP_HEADER, NonceStore
 from app.db.session import engine
+from app.services.images import OUTPUT_EXTENSION
 
 
 @asynccontextmanager
@@ -55,6 +57,8 @@ def create_app() -> FastAPI:
     app.include_router(api_router, prefix=settings.api_prefix)
 
     # Yuklangan rasmlar. Production'da bu papkani nginx to'g'ridan-to'g'ri bersa yaxshiroq.
+    # Slim Docker image'da .webp MIME turi ro'yxatda yo'q, aks holda octet-stream qaytadi.
+    mimetypes.add_type("image/webp", OUTPUT_EXTENSION)
     settings.media_dir.mkdir(parents=True, exist_ok=True)
     app.mount(settings.media_url_prefix, StaticFiles(directory=settings.media_dir), name="media")
     return app
