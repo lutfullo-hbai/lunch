@@ -120,7 +120,9 @@ async def test_refresh_rotates_token(client):
     assert new_me.status_code == 200
 
 
-async def test_refresh_reuse_revokes_all_sessions(client):
+async def test_refresh_reuse_revokes_all_sessions(client, monkeypatch):
+    # Grace oynasi tugagan: eski token qayta kelsa, bu o'g'irlik deb hisoblanadi.
+    monkeypatch.setattr(get_settings(), "refresh_reuse_grace_seconds", 0)
     tokens = await register(client)
     rotated = (
         await client.post(f"{API}/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
@@ -148,3 +150,16 @@ async def test_logout_revokes_session(client):
         f"{API}/auth/refresh", json={"refresh_token": tokens["refresh_token"]}
     )
     assert refresh.status_code == 401
+
+
+async def test_reuse_within_grace_keeps_sessions(client):
+    tokens = await register(client)
+    rotated = (
+        await client.post(f"{API}/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
+    ).json()
+
+    again = await client.post(
+        f"{API}/auth/refresh", json={"refresh_token": tokens["refresh_token"]}
+    )
+    assert again.json()["error"]["code"] == "REFRESH_TOKEN_ROTATED"
+    assert (await signed_request(client, rotated, "GET", "/me")).status_code == 200

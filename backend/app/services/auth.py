@@ -1,5 +1,6 @@
 """Auth biznes logikasi: register, login, token yangilash, logout."""
 
+import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -32,6 +33,14 @@ def invalid_refresh_token() -> AppError:
     return AppError(status.HTTP_401_UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "Refresh token yaroqsiz")
 
 
+def refresh_token_rotated() -> AppError:
+    return AppError(
+        status.HTTP_401_UNAUTHORIZED,
+        "REFRESH_TOKEN_ROTATED",
+        "Token boshqa so'rovda yangilangan, eng oxirgi tokendan foydalaning",
+    )
+
+
 def user_inactive() -> AppError:
     return AppError(status.HTTP_403_FORBIDDEN, "USER_INACTIVE", "Hisob bloklangan")
 
@@ -54,6 +63,7 @@ class IssuedTokens:
     refresh_token: str
     expires_in: int
     signing_key: str
+    session_id: uuid.UUID
     user: User
 
 
@@ -77,6 +87,7 @@ async def _issue_tokens(db: AsyncSession, user: User) -> IssuedTokens:
         refresh_token=raw_refresh,
         expires_in=expires_in,
         signing_key=derive_signing_key(session.jti),
+        session_id=session.jti,
         user=user,
     )
 
@@ -124,7 +135,8 @@ async def refresh(db: AsyncSession, raw_token: str) -> IssuedTokens:
     """Refresh tokenni almashtiradi (rotation).
 
     Bekor qilingan token qayta ishlatilsa, u o'g'irlangan deb hisoblanadi va
-    userning barcha sessiyalari bekor qilinadi.
+    userning barcha sessiyalari bekor qilinadi. Istisno: token hozirgina (grace oynasi
+    ichida) almashtirilgan bo'lsa, bu parallel so'rov, sessiyalar yopilmaydi.
     """
     session = await db.scalar(
         select(RefreshToken)
@@ -135,6 +147,8 @@ async def refresh(db: AsyncSession, raw_token: str) -> IssuedTokens:
         raise invalid_refresh_token()
 
     if session.revoked_at is not None:
+        if _recently_rotated(session):
+            raise refresh_token_rotated()
         await revoke_all_sessions(db, session.user_id)
         await db.commit()
         raise invalid_refresh_token()
@@ -148,8 +162,16 @@ async def refresh(db: AsyncSession, raw_token: str) -> IssuedTokens:
 
     session.revoked_at = _now()
     tokens = await _issue_tokens(db, user)
+    session.replaced_by_jti = tokens.session_id
     await db.commit()
     return tokens
+
+
+def _recently_rotated(session: RefreshToken) -> bool:
+    if session.replaced_by_jti is None or session.revoked_at is None:
+        return False
+    grace = timedelta(seconds=get_settings().refresh_reuse_grace_seconds)
+    return _now() - session.revoked_at <= grace
 
 
 async def logout(db: AsyncSession, session: RefreshToken) -> None:

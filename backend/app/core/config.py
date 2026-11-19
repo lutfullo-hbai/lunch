@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_ttl_minutes: int = Field(default=1440, ge=1)  # 1 kun
     refresh_token_ttl_days: int = Field(default=7, ge=1)
+    # Shu vaqt ichida almashtirilgan token qayta kelsa, bu o'g'irlik emas, parallel
+    # so'rov deb hisoblanadi (masalan ikki tab bir vaqtda refresh qildi).
+    refresh_reuse_grace_seconds: int = Field(default=30, ge=0)
     bcrypt_rounds: int = Field(default=12, ge=4, le=16)
     password_min_length: int = Field(default=8, ge=6)
 

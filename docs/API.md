@@ -23,6 +23,8 @@ Frontend `code` bo'yicha ishlaydi, `message` foydalanuvchiga ko'rsatish uchun.
 Tokenlar javobi: `access_token`, `refresh_token`, `expires_in` (soniya), `signing_key`, `user`.
 
 - Refresh token har ishlatilganda almashadi, eskisini saqlab qo'ymang.
+- Bir vaqtda faqat bitta refresh so'rovi yuboring: tablar orasida umumiy, "single-flight". Agar `REFRESH_TOKEN_ROTATED` kelsa, token boshqa so'rovda allaqachon yangilangan bo'ladi. Saqlangan eng oxirgi tokenni oling va so'rovni qaytaring.
+- Eski token `REFRESH_REUSE_GRACE_SECONDS` dan keyin qayta ishlatilsa, o'g'irlangan deb hisoblanadi va userning barcha sessiyalari yopiladi.
 - `signing_key` ham har login/refresh'da yangilanadi.
 
 ## So'rov imzosi
