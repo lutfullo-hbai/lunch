@@ -39,7 +39,7 @@ async def test_limit_applies_without_content_length(client):
     assert response.status_code == 413
 
 
-async def test_small_unsigned_request_passes(client):
+async def test_small_anonymous_request_passes(client):
     response = await client.post(
         f"{API}/auth/login", json={"email": "yoq@example.com", "password": "secret-pass"}
     )

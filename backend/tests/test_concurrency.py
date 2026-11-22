@@ -2,6 +2,8 @@
 
 import asyncio
 
+import pytest
+
 from app.core.config import get_settings
 from tests.conftest import LIVE_EMAIL_DOMAIN
 from tests.helpers import register, signed_request
@@ -43,7 +45,10 @@ async def test_parallel_register_same_email_returns_409(live_client):
     assert sorted(r.status_code for r in responses) == [201, 409]
 
 
-async def test_parallel_image_uploads_leave_no_orphans(live_client, tmp_path, monkeypatch):
+@pytest.mark.parametrize("existing_image", [False, True])
+async def test_parallel_image_uploads_leave_no_orphans(
+    live_client, tmp_path, monkeypatch, existing_image
+):
     from decimal import Decimal
 
     from sqlalchemy import delete
@@ -65,6 +70,8 @@ async def test_parallel_image_uploads_leave_no_orphans(live_client, tmp_path, mo
         item_id, category_id = item.id, category.id
 
     try:
+        if existing_image:  # eski rasm ikki marta o'chirilmasin, yangisi yetim qolmasin
+            assert (await upload(live_client, admin, item_id, png_bytes())).status_code == 200
         responses = await asyncio.gather(
             upload(live_client, admin, item_id, png_bytes()),
             upload(live_client, admin, item_id, png_bytes()),
