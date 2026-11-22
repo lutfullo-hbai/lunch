@@ -47,3 +47,18 @@ def test_window_resets(monkeypatch):
     assert limiter.hit("k", limit=1, window_seconds=60) == 60
     now[0] += 60
     assert limiter.hit("k", limit=1, window_seconds=60) is None
+
+
+def test_short_window_sweep_keeps_long_windows(monkeypatch):
+    """Login (60 s) sweep'i register (1 soat) hisobini o'chirmasligi kerak."""
+    import app.core.rate_limit as module
+
+    now = [1000.0]
+    monkeypatch.setattr(module.time, "monotonic", lambda: now[0])
+    limiter = RateLimiter()
+
+    assert limiter.hit("register:ip", limit=1, window_seconds=3600) is None
+    assert limiter.hit("register:ip", limit=1, window_seconds=3600) is not None
+    now[0] += 61
+    limiter.hit("login:ip", limit=10, window_seconds=60)  # sweep'ni ishga tushiradi
+    assert limiter.hit("register:ip", limit=1, window_seconds=3600) is not None
