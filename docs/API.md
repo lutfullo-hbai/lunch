@@ -70,6 +70,28 @@ string_to_sign = METHOD + "\n" + PATH + "\n" + X-Timestamp + "\n" + X-Nonce + "\
 
 Xato kodlari: `SIGNATURE_MISSING`, `SIGNATURE_EXPIRED`, `SIGNATURE_INVALID`, `SIGNATURE_REPLAYED`, `SESSION_REVOKED`.
 
+## Menyu va buyurtmalar (user)
+
+Hammasi login va imzo talab qiladi.
+
+| Endpoint | Javob |
+| --- | --- |
+| `GET /categories` | Faol kategoriyalar: `[{id, name}]` |
+| `GET /menu?category_id=` | Buyurtma qilish mumkin bo'lgan ovqatlar ro'yxati |
+| `GET /menu/{id}` | Bitta ovqat. Sotuvda bo'lmasa 404 |
+| `POST /orders` `{items: [{menu_item_id, quantity}], payment_method}` | 201, buyurtma |
+| `GET /orders/me` | O'z buyurtmalari, sahifalangan, yangisi birinchi |
+| `GET /orders/me/{id}` | Bitta buyurtma. Boshqaning buyurtmasi 404 |
+| `POST /orders/me/{id}/cancel` | Bekor qilingan buyurtma |
+
+Buyurtma javobi: `id`, `status`, `payment_method` (`cash` yoki `card`), `total_price`, `created_at`, `items` (`name`, `price`, `quantity`, `subtotal`), `can_cancel`.
+
+- **Narx** bazadan olinadi, mijoz yuborgan narx e'tiborga olinmaydi. Bir xil ovqat ikki qatorda kelsa, bitta qatorga qo'shiladi.
+- **Miqdor** kamida 1. Bitta buyurtmada ko'pi bilan `ORDER_MAX_LINES` xil ovqat.
+- **Sotuvda yo'q ovqat:** `409 ITEMS_UNAVAILABLE`, `details.menu_item_ids` da qaysilari. Savatni yangilab, qayta yuboring.
+- **Bekor qilish** faqat `new` holatida mumkin (`can_cancel`), aks holda `409 ORDER_NOT_CANCELLABLE`.
+- **Guruhga xabar:** buyurtma yaratilgach (va user bekor qilganda) fonda `ORDERS_GROUP_CHAT_ID` guruhiga yuboriladi. Yuborilmasa `NOTIFY_RETRY_DELAYS` bo'yicha qayta uriniladi, keyin `notify_status = failed`. `BOT_TOKEN` berilmasa xabar yuborilmaydi, buyurtma baribir qabul qilinadi.
+
 ## Admin
 
 Hammasi imzo talab qiladi va faqat `admin` roli uchun ochiq, boshqalar 403 oladi. Ro'yxatlar `?page=&size=` bilan sahifalanadi va `{items, total, page, size}` qaytaradi.
@@ -79,13 +101,13 @@ Hammasi imzo talab qiladi va faqat `admin` roli uchun ochiq, boshqalar 403 oladi
 | Kategoriyalar | `GET`, `POST /admin/categories`; `PATCH`, `DELETE /admin/categories/{id}` |
 | Menyu | `GET`, `POST /admin/menu`; `GET`, `PATCH`, `DELETE /admin/menu/{id}`; `PUT`, `DELETE /admin/menu/{id}/image` |
 | Userlar | `GET /admin/users`; `GET /admin/users/{id}`; `GET /admin/users/{id}/orders`; `PATCH /admin/users/{id}/status` |
-| Buyurtmalar | `GET /admin/orders`; `GET /admin/orders/{id}`; `PATCH /admin/orders/{id}/status` |
+| Buyurtmalar | `GET /admin/orders`; `GET /admin/orders/{id}`; `PATCH /admin/orders/{id}/status`; `POST /admin/orders/{id}/notify` |
 
 Filtrlar:
 
 - **Menyu:** `category_id`, `search`, `is_available`.
 - **Userlar:** `search` (email, ism, telefon), `role`, `is_active`.
-- **Buyurtmalar:** `status`, `payment_method`, `user_id`, `date_from`, `date_to`. Sanalar `YYYY-MM-DD` ko'rinishida va `TIMEZONE` bo'yicha hisoblanadi.
+- **Buyurtmalar:** `status`, `payment_method`, `user_id`, `notify_status`, `date_from`, `date_to`. Sanalar `YYYY-MM-DD` ko'rinishida va `TIMEZONE` bo'yicha hisoblanadi.
 
 Qoidalar:
 
@@ -94,3 +116,4 @@ Qoidalar:
 - **Rasm:** faqat JPEG, PNG yoki WebP qabul qilinadi, hajmi `IMAGE_MAX_UPLOAD_MB` gacha. Server uni WebP'ga o'giradi, natijada `image_url` va `thumb_url` qaytadi.
 - **Userni bloklash:** barcha sessiyalari darhol yopiladi. Adminni bloklab bo'lmaydi.
 - **Buyurtma holati:** `new → accepted → ready → delivered` tartibida o'zgaradi, `delivered` gacha bekor qilish mumkin. Mumkin bo'lgan keyingi holatlar javobdagi `allowed_statuses` da keladi.
+- **Guruhga qayta yuborish:** `POST /admin/orders/{id}/notify` (202) `failed` yoki `pending` buyurtmani fonda qayta yuboradi. Yuborilgan bo'lsa `409 ORDER_ALREADY_NOTIFIED`, bot sozlanmagan bo'lsa `503 TELEGRAM_NOT_CONFIGURED`.
