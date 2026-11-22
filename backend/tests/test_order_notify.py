@@ -180,3 +180,26 @@ async def test_resend_without_telegram_config_is_503(client, admin, user, menu, 
     response = await signed_request(client, admin, "POST", f"/admin/orders/{order['id']}/notify")
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "TELEGRAM_NOT_CONFIGURED"
+
+
+def test_long_order_fits_telegram_limit():
+    from datetime import UTC, datetime
+    from decimal import Decimal
+    from types import SimpleNamespace
+
+    from app.models.enums import PaymentMethod
+    from app.services.order_notify import new_order_text
+
+    item = SimpleNamespace(name_snapshot="X" * 150, quantity=999, subtotal=Decimal("123456789.99"))
+    order = SimpleNamespace(
+        id=7,
+        user=SimpleNamespace(full_name="Ali", email="ali@example.com"),
+        items=[item] * 50,
+        total_price=Decimal("9999999999"),
+        payment_method=PaymentMethod.CASH,
+        created_at=datetime.now(UTC),
+    )
+    text = new_order_text(order)
+    assert len(text) <= telegram.MAX_MESSAGE_LENGTH
+    assert "va yana" in text
+    assert "Jami:" in text

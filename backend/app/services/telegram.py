@@ -4,6 +4,9 @@ import httpx
 
 from app.core.config import get_settings
 
+# Bot API cheklovi: bitta xabar matni shuncha belgidan oshmaydi.
+MAX_MESSAGE_LENGTH = 4096
+
 # Testlarda soxta transport qo'yiladi (haqiqiy Telegram'ga so'rov ketmasin).
 transport: httpx.AsyncBaseTransport | None = None
 

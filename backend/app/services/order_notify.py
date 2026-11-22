@@ -44,23 +44,26 @@ def _customer(order: Order) -> str:
 
 def new_order_text(order: Order) -> str:
     created = order.created_at.astimezone(get_settings().tz)
+    head = [f"🆕 <b>Yangi buyurtma #{order.id}</b>", "", _customer(order), ""]
+    tail = [
+        "",
+        f"💰 Jami: <b>{_money(order.total_price)}</b>",
+        _PAYMENT_LINES[order.payment_method],
+        f"🕒 {created:%d.%m.%Y %H:%M}",
+    ]
     lines = [
         f"🍽 {escape(item.name_snapshot)} × {item.quantity} — {_money(item.subtotal)}"
         for item in order.items
     ]
-    return "\n".join(
-        [
-            f"🆕 <b>Yangi buyurtma #{order.id}</b>",
-            "",
-            _customer(order),
-            "",
-            *lines,
-            "",
-            f"💰 Jami: <b>{_money(order.total_price)}</b>",
-            _PAYMENT_LINES[order.payment_method],
-            f"🕒 {created:%d.%m.%Y %H:%M}",
-        ]
-    )
+    # Telegram uzun xabarni qabul qilmaydi: sig'magan qatorlar o'rniga ularning soni yoziladi.
+    hidden = 0
+    while True:
+        shown = lines[: len(lines) - hidden]
+        more = [f"… va yana {hidden} ta ovqat (to'liq ro'yxat admin panelda)"] if hidden else []
+        text = "\n".join([*head, *shown, *more, *tail])
+        if len(text) <= telegram.MAX_MESSAGE_LENGTH or not shown:
+            return text
+        hidden += 1
 
 
 def cancelled_order_text(order: Order) -> str:
