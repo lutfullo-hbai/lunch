@@ -1,7 +1,10 @@
 """So'rov tanasi (body) hajmini cheklaydigan va uni oldindan o'qib saqlaydigan ASGI middleware.
 
-- Har bir so'rovga chegara qo'yiladi: imzolanganiga MAX_REQUEST_MB (rasm yuklash),
-  imzosiziga (login, register) MAX_UNSIGNED_REQUEST_KB. Chegara ilova body'ni
+- Har bir so'rovga chegara qo'yiladi. Katta chegara (MAX_REQUEST_MB, rasm yuklash)
+  faqat yaroqli access token bilan kelgan so'rovga beriladi, qolganlariga (login,
+  register, refresh) MAX_UNSIGNED_REQUEST_KB. Imzo body'siz tekshirilmaydi, shuning
+  uchun bu yerda faqat token (JWT imzosi va muddati) tekshiriladi: soxta
+  `X-Signature` sarlavhasi katta chegarani bermaydi. Chegara ilova body'ni
   o'qishidan oldin tekshiriladi, katta so'rov oxirigacha o'qilmaydi.
 - Body `scope["state"]` ga saqlanadi: FastAPI multipart'ni dependency'lardan oldin
   o'qib yuboradi, imzo tekshiruvi esa aynan shu baytlarni ishlatadi.
@@ -12,20 +15,32 @@ import json
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.errors import error_body
-from app.core.signature import SIGNATURE_HEADER
+from app.core.security import decode_access_token
 
 RAW_BODY_STATE_KEY = "raw_body"
-_SIGNATURE_HEADER = SIGNATURE_HEADER.lower().encode()
+_BEARER_PREFIX = b"bearer "
+
+
+def _has_valid_access_token(headers: dict[bytes, bytes]) -> bool:
+    authorization = headers.get(b"authorization", b"")
+    if not authorization.lower().startswith(_BEARER_PREFIX):
+        return False
+    token = authorization[len(_BEARER_PREFIX) :].decode("latin-1").strip()
+    return decode_access_token(token) is not None
 
 
 class BodyLimitMiddleware:
-    def __init__(self, app: ASGIApp, signed_max_bytes: int, unsigned_max_bytes: int) -> None:
+    def __init__(
+        self, app: ASGIApp, authenticated_max_bytes: int, anonymous_max_bytes: int
+    ) -> None:
         self.app = app
-        self.signed_max_bytes = signed_max_bytes
-        self.unsigned_max_bytes = unsigned_max_bytes
+        self.authenticated_max_bytes = authenticated_max_bytes
+        self.anonymous_max_bytes = anonymous_max_bytes
 
     def _limit(self, headers: dict[bytes, bytes]) -> int:
-        return self.signed_max_bytes if _SIGNATURE_HEADER in headers else self.unsigned_max_bytes
+        if _has_valid_access_token(headers):
+            return self.authenticated_max_bytes
+        return self.anonymous_max_bytes
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":

@@ -36,8 +36,8 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(
         BodyLimitMiddleware,
-        signed_max_bytes=settings.max_request_mb * 1024 * 1024,
-        unsigned_max_bytes=settings.max_unsigned_request_kb * 1024,
+        authenticated_max_bytes=settings.max_request_mb * 1024 * 1024,
+        anonymous_max_bytes=settings.max_unsigned_request_kb * 1024,
     )
     app.add_middleware(
         CORSMiddleware,

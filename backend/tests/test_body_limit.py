@@ -1,6 +1,10 @@
-"""So'rov hajmi chegarasi: imzolangan va imzosiz so'rovlar uchun."""
+"""So'rov hajmi chegarasi: tokenli va tokensiz so'rovlar uchun."""
+
+import pytest
 
 from app.core.config import get_settings
+from app.core.signature import NONCE_HEADER, SIGNATURE_HEADER, TIMESTAMP_HEADER
+from tests.helpers import register
 
 API = get_settings().api_prefix
 
@@ -40,3 +44,30 @@ async def test_small_unsigned_request_passes(client):
         f"{API}/auth/login", json={"email": "yoq@example.com", "password": "secret-pass"}
     )
     assert response.status_code == 401  # limitdan o'tdi, oddiy auth xatosi
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        {SIGNATURE_HEADER: "x", TIMESTAMP_HEADER: "1", NONCE_HEADER: "n"},
+        {"Authorization": "Bearer not-a-jwt", SIGNATURE_HEADER: "x"},
+    ],
+)
+async def test_fake_signature_header_does_not_raise_limit(client, headers):
+    big = b"0" * (unsigned_limit() + 1)
+    response = await client.put(
+        f"{API}/admin/menu/1/image", files={"image": ("x.png", big)}, headers=headers
+    )
+    assert response.status_code == 413
+
+
+async def test_valid_token_gets_large_limit(client):
+    tokens = await register(client)
+    big = b"0" * (unsigned_limit() + 1)
+    response = await client.put(
+        f"{API}/admin/menu/1/image",
+        files={"image": ("x.png", big)},
+        headers={"Authorization": f"Bearer {tokens['access_token']}"},
+    )
+    # Limitdan o'tdi: keyingi tekshiruv (imzo) rad etadi.
+    assert response.json()["error"]["code"] == "SIGNATURE_MISSING"
