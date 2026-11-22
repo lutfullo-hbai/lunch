@@ -44,9 +44,11 @@ async def list_orders(
         query = query.where(Order.payment_method == filters.payment_method)
     if filters.user_id is not None:
         query = query.where(Order.user_id == filters.user_id)
-    if filters.date_from is not None:
+    # Chekka sanalarda (date.min, date.max) filtr kerak emas va UTC'ga o'tkazib bo'lmaydi:
+    # mahalliy vaqt zonasi siljishi 1-yildan oldinga yoki 9999-yildan keyinga chiqaradi.
+    if filters.date_from is not None and filters.date_from > date.min:
         query = query.where(Order.created_at >= _start_of_day(filters.date_from))
-    if filters.date_to is not None and filters.date_to < date.max:  # date.max + 1 kun bo'lmaydi
+    if filters.date_to is not None and filters.date_to < date.max:
         query = query.where(Order.created_at < _start_of_day(filters.date_to + timedelta(days=1)))
 
     query = query.order_by(Order.created_at.desc(), Order.id.desc())

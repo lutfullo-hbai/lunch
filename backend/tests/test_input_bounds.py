@@ -69,8 +69,12 @@ async def test_body_ids_and_sort_order_are_bounded(client, admin):
     assert_validation_error(category, "sort_order")
 
 
-async def test_date_to_max_date_is_not_500(client, admin):
-    response = await signed_request(client, admin, "GET", "/admin/orders?date_to=9999-12-31")
+@pytest.mark.parametrize(
+    "query",
+    ["date_to=9999-12-31", "date_from=0001-01-01", "date_from=0001-01-01&date_to=0001-01-01"],
+)
+async def test_extreme_dates_are_not_500(client, admin, query):
+    response = await signed_request(client, admin, "GET", f"/admin/orders?{query}")
     assert response.status_code == 200
 
 
