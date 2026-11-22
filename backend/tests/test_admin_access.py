@@ -25,6 +25,7 @@ ADMIN_ENDPOINTS = [
     ("GET", "/admin/orders", None),
     ("GET", "/admin/orders/1", None),
     ("PATCH", "/admin/orders/1/status", {"status": "accepted"}),
+    ("POST", "/admin/orders/1/notify", None),
 ]
 
 

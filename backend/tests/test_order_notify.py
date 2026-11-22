@@ -149,3 +149,34 @@ async def test_user_cancel_message_sent(client, user, menu, configure):
     await signed_request(client, user, "POST", f"/orders/me/{order['id']}/cancel")
     assert len(fake.sent) == 2
     assert f"Buyurtma #{order['id']} bekor qilindi" in fake.sent[1]["text"]
+
+
+async def test_admin_filters_failed_and_resends(client, admin, user, menu, configure):
+    fake = configure(FakeTelegram(fail_times=100))
+    failed = await place_order(client, user, menu)
+    fake.fail_times = 0  # Telegram yana ishlay boshladi
+    await place_order(client, user, menu)
+
+    listed = await signed_request(client, admin, "GET", "/admin/orders?notify_status=failed")
+    assert [o["id"] for o in listed.json()["items"]] == [failed["id"]]
+
+    response = await signed_request(client, admin, "POST", f"/admin/orders/{failed['id']}/notify")
+    assert response.status_code == 202
+    assert await notify_status(client, admin, failed["id"]) == "sent"
+    assert f"#{failed['id']}" in fake.sent[-1]["text"]
+
+
+async def test_resend_already_sent_is_409(client, admin, user, menu, configure):
+    configure(FakeTelegram())
+    order = await place_order(client, user, menu)
+    response = await signed_request(client, admin, "POST", f"/admin/orders/{order['id']}/notify")
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "ORDER_ALREADY_NOTIFIED"
+
+
+async def test_resend_without_telegram_config_is_503(client, admin, user, menu, monkeypatch):
+    monkeypatch.setattr(get_settings(), "bot_token", None)
+    order = await place_order(client, user, menu)
+    response = await signed_request(client, admin, "POST", f"/admin/orders/{order['id']}/notify")
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "TELEGRAM_NOT_CONFIGURED"

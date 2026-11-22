@@ -152,6 +152,20 @@ def order_not_cancellable(current: str) -> AppError:
     )
 
 
+def order_already_notified() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT, "ORDER_ALREADY_NOTIFIED", "Buyurtma guruhga allaqachon yuborilgan"
+    )
+
+
+def telegram_not_configured() -> AppError:
+    return AppError(
+        status.HTTP_503_SERVICE_UNAVAILABLE,
+        "TELEGRAM_NOT_CONFIGURED",
+        "BOT_TOKEN yoki ORDERS_GROUP_CHAT_ID sozlanmagan",
+    )
+
+
 def order_not_found() -> AppError:
     return AppError(status.HTTP_404_NOT_FOUND, "ORDER_NOT_FOUND", "Buyurtma topilmadi")
 
