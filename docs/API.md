@@ -42,7 +42,7 @@ Tokenlar javobi: `access_token`, `refresh_token`, `expires_in` (soniya), `signin
 - Eski token `REFRESH_REUSE_GRACE_SECONDS` dan keyin qayta ishlatilsa, o'g'irlangan deb hisoblanadi va userning barcha sessiyalari yopiladi.
 - `signing_key` ham har login/refresh'da yangilanadi.
 - Logout qilingan refresh token shunchaki `INVALID_REFRESH_TOKEN` oladi, boshqa sessiyalar yopilmaydi.
-- **Rate limit:** login va register IP bo'yicha cheklanadi (`LOGIN_RATE_*`, `REGISTER_RATE_*`). Oshib ketsa `429 TOO_MANY_REQUESTS` va `Retry-After` header keladi. IP proxy ortida `--proxy-headers` orqali olinadi, shuning uchun proxy manzili `FORWARDED_ALLOW_IPS` da bo'lishi kerak.
+- **Rate limit:** login va register IP bo'yicha cheklanadi (`LOGIN_RATE_*`, `REGISTER_RATE_*`). Oshib ketsa `429 TOO_MANY_REQUESTS` va `Retry-After` header keladi. IP proxy ortida `--proxy-headers` orqali olinadi, shuning uchun proxy manzili `FORWARDED_ALLOW_IPS` da bo'lishi kerak (compose'da default `172.16.0.0/12`, Docker bridge tarmog'i). Aks holda hamma userlar proxy IP'si ostida bitta limitga tushadi. `*` qo'yilmaydi: unda `X-Forwarded-For` ni soxtalashtirib limitni aylanib o'tish mumkin.
 
 ## So'rov imzosi
 
