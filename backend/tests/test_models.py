@@ -42,8 +42,6 @@ async def test_order_with_items(db):
         user=user,
         total_price=Decimal("90000"),
         payment_method=PaymentMethod.CARD,
-        phone="+998901234567",
-        address="Toshkent",
         items=[
             OrderItem(menu_item=item, name_snapshot="Palov", price_snapshot=item.price, quantity=2)
         ],

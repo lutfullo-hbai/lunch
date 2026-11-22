@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy import CheckConstraint, ForeignKey, Index, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
@@ -39,9 +39,6 @@ class Order(TimestampMixin, Base):
         server_default=OrderStatus.NEW.value,
         index=True,
     )
-    phone: Mapped[str] = mapped_column(String(32))
-    address: Mapped[str] = mapped_column(String(255))
-    comment: Mapped[str | None] = mapped_column(Text)
     notify_status: Mapped[NotifyStatus] = mapped_column(
         pg_enum(NotifyStatus, "notify_status"),
         default=NotifyStatus.PENDING,

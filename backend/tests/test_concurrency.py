@@ -104,8 +104,6 @@ async def test_parallel_status_changes_only_one_wins(live_client):
             user_id=user.id,
             total_price=Decimal("1"),
             payment_method=PaymentMethod.CASH,
-            phone="+998900000000",
-            address="Toshkent",
             items=[
                 OrderItem(
                     menu_item=item, name_snapshot="Osh", price_snapshot=Decimal("1"), quantity=1

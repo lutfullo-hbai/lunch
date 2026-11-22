@@ -32,9 +32,6 @@ class OrderOut(BaseModel):
     status: OrderStatus
     payment_method: PaymentMethod
     total_price: Decimal
-    phone: str
-    address: str
-    comment: str | None
     notify_status: NotifyStatus
     created_at: datetime
     updated_at: datetime

@@ -60,7 +60,7 @@ PostgreSQL, 6 ta jadval. Sxemadagi har bir o'zgarish Alembic migratsiyasi bilan 
 | refresh_tokens | id, user_id → users, jti (unique), token_hash (unique), expires_at, revoked_at, replaced_by_jti, created_at |
 | categories | id, name (katta-kichik harfsiz unique), sort_order, is_active, created_at, updated_at |
 | menu_items | id, category_id → categories (o'chirilsa NULL), name, description, price, portion, image_path, is_available, deleted_at, created_at, updated_at |
-| orders | id, user_id → users, total_price, payment_method (cash / card), status, phone, address, comment, notify_status, created_at, updated_at |
+| orders | id, user_id → users, total_price, payment_method (cash / card), status, notify_status, created_at, updated_at |
 | order_items | id, order_id → orders, menu_item_id → menu_items, name_snapshot, price_snapshot, quantity |
 
 Parol faqat hash ko'rinishida, refresh token ham faqat hash ko'rinishida saqlanadi. `order_items.name_snapshot` va `price_snapshot` buyurtma paytidagi nom va narxni saqlaydi, shuning uchun menyu o'zgarsa eski buyurtmalar o'zgarmaydi. Ovqat o'chirilganda qator qoladi (`deleted_at` to'ldiriladi), rasmi esa o'chiriladi. `refresh_tokens.replaced_by_jti` token almashtirilganini (rotation) logout'dan ajratadi.

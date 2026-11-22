@@ -36,8 +36,6 @@ async def make_order(db, customer):
             total_price=item.price * quantity,
             payment_method=payment,
             status=status,
-            phone="+998901234567",
-            address="Toshkent, Chilonzor",
             items=[
                 OrderItem(
                     menu_item_id=item.id,
