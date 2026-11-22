@@ -1,4 +1,4 @@
-"""User buyurtmalari: yaratish, ro'yxat va tafsilot."""
+"""User buyurtmalari: yaratish, ro'yxat, tafsilot va bekor qilish."""
 
 from collections import Counter
 from decimal import Decimal
@@ -7,9 +7,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.errors import items_unavailable, order_not_found, validation_error
+from app.core.errors import (
+    items_unavailable,
+    order_not_cancellable,
+    order_not_found,
+    validation_error,
+)
 from app.db.query import PageResult, paginate
 from app.models import Order, OrderItem, User
+from app.models.enums import OrderStatus
 from app.schemas.common import PageParams
 from app.schemas.order import OrderCreate
 from app.services import catalog
@@ -75,3 +81,20 @@ async def create_order(db: AsyncSession, user: User, data: OrderCreate) -> Order
     db.add(order)
     await db.commit()
     return await get_order(db, user, order.id)
+
+
+async def cancel_order(db: AsyncSession, user: User, order_id: int) -> Order:
+    # Admin bir vaqtda qabul qilayotgan bo'lsa, qulf ikkalasini ketma-ket qiladi.
+    order = await db.scalar(
+        select(Order)
+        .where(Order.id == order_id, Order.user_id == user.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if order is None:
+        raise order_not_found()
+    if not order.user_can_cancel:
+        raise order_not_cancellable(order.status)
+    order.status = OrderStatus.CANCELLED
+    await db.commit()
+    return await get_order(db, user, order_id)

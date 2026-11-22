@@ -51,6 +51,11 @@ class Order(TimestampMixin, Base):
     )
 
     @property
+    def user_can_cancel(self) -> bool:
+        """User o'z buyurtmasini faqat admin qabul qilmasidan oldin bekor qila oladi."""
+        return self.status is OrderStatus.NEW
+
+    @property
     def allowed_statuses(self) -> list[OrderStatus]:
         """Keyingi mumkin bo'lgan holatlar, enum tartibida (javob har doim bir xil bo'lsin)."""
         return [s for s in OrderStatus if s in STATUS_TRANSITIONS[self.status]]

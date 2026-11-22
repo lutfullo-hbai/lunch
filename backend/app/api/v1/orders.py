@@ -24,3 +24,8 @@ async def list_my_orders(user: CurrentUser, db: DbSession, page: Pagination) -> 
 @router.get("/me/{order_id}")
 async def get_my_order(order_id: Id, user: CurrentUser, db: DbSession) -> MyOrderOut:
     return MyOrderOut.model_validate(await user_orders.get_order(db, user, order_id))
+
+
+@router.post("/me/{order_id}/cancel")
+async def cancel_my_order(order_id: Id, user: CurrentUser, db: DbSession) -> MyOrderOut:
+    return MyOrderOut.model_validate(await user_orders.cancel_order(db, user, order_id))

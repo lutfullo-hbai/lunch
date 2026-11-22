@@ -140,3 +140,31 @@ async def test_someone_elses_order_is_404(client, user, menu):
     response = await signed_request(client, user, "GET", f"/orders/me/{created['id']}")
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "ORDER_NOT_FOUND"
+
+
+async def test_user_cancels_new_order(client, user, menu):
+    created = (await order(client, user, [line(menu["palov"])])).json()
+    assert created["can_cancel"] is True
+
+    response = await signed_request(client, user, "POST", f"/orders/me/{created['id']}/cancel")
+    assert response.status_code == 200
+    assert response.json()["status"] == "cancelled"
+    assert response.json()["can_cancel"] is False
+
+
+@pytest.mark.parametrize("admin_status", ["accepted", "cancelled"])
+async def test_user_cannot_cancel_after_admin_action(client, admin, user, menu, admin_status):
+    created = (await order(client, user, [line(menu["palov"])])).json()
+    await signed_request(
+        client, admin, "PATCH", f"/admin/orders/{created['id']}/status", {"status": admin_status}
+    )
+    response = await signed_request(client, user, "POST", f"/orders/me/{created['id']}/cancel")
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "ORDER_NOT_CANCELLABLE"
+
+
+async def test_user_cannot_cancel_someone_elses_order(client, user, menu):
+    other = await register(client, email="other@example.com")
+    created = (await order(client, other, [line(menu["choy"])])).json()
+    response = await signed_request(client, user, "POST", f"/orders/me/{created['id']}/cancel")
+    assert response.status_code == 404

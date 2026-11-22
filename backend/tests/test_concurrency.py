@@ -221,3 +221,52 @@ async def test_refresh_waits_for_user_lock_so_block_closes_every_session(live_cl
             .where(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None))
         )
     assert live == 0
+
+
+async def test_user_cancel_and_admin_accept_only_one_wins(live_client):
+    from decimal import Decimal
+
+    from sqlalchemy import delete
+
+    from app.db.session import SessionFactory
+    from app.models import Category, MenuItem, Order, User
+    from app.models.enums import UserRole
+
+    admin = await register(live_client, email=f"chef@{LIVE_EMAIL_DOMAIN}")
+    customer = await register(live_client, email=f"buyer@{LIVE_EMAIL_DOMAIN}")
+    async with SessionFactory() as session:
+        (await session.get(User, admin["user"]["id"])).role = UserRole.ADMIN
+        item = MenuItem(
+            category=Category(name=f"Cancel {admin['user']['id']}"), name="Osh", price=Decimal("1")
+        )
+        session.add(item)
+        await session.commit()
+        item_id, category_id = item.id, item.category_id
+
+    try:
+        for _ in range(5):
+            created = await signed_request(
+                live_client,
+                customer,
+                "POST",
+                "/orders",
+                {"items": [{"menu_item_id": item_id, "quantity": 1}], "payment_method": "cash"},
+            )
+            order_id = created.json()["id"]
+            cancel, accept = await asyncio.gather(
+                signed_request(live_client, customer, "POST", f"/orders/me/{order_id}/cancel"),
+                signed_request(
+                    live_client,
+                    admin,
+                    "PATCH",
+                    f"/admin/orders/{order_id}/status",
+                    {"status": "accepted"},
+                ),
+            )
+            assert sorted([cancel.status_code, accept.status_code]) == [200, 409]
+    finally:
+        async with SessionFactory() as session:
+            await session.execute(delete(Order).where(Order.user_id == customer["user"]["id"]))
+            await session.execute(delete(MenuItem).where(MenuItem.id == item_id))
+            await session.execute(delete(Category).where(Category.id == category_id))
+            await session.commit()

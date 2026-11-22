@@ -143,6 +143,15 @@ def items_unavailable(item_ids: list[int]) -> AppError:
     )
 
 
+def order_not_cancellable(current: str) -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "ORDER_NOT_CANCELLABLE",
+        "Buyurtma qabul qilingan, uni endi bekor qilib bo'lmaydi",
+        details={"current": current},
+    )
+
+
 def order_not_found() -> AppError:
     return AppError(status.HTTP_404_NOT_FOUND, "ORDER_NOT_FOUND", "Buyurtma topilmadi")
 

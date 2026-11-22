@@ -73,6 +73,7 @@ class MyOrderOut(BaseModel):
     total_price: Decimal
     created_at: datetime
     items: list[OrderItemOut]
+    can_cancel: bool = Field(validation_alias="user_can_cancel")
 
 
 class OrderStatusUpdate(BaseModel):
