@@ -1,4 +1,5 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
+from contextlib import AbstractAsyncContextManager
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -27,3 +28,11 @@ SessionFactory = async_sessionmaker(engine, expire_on_commit=False)
 async def get_db() -> AsyncIterator[AsyncSession]:
     async with SessionFactory() as session:
         yield session
+
+
+# Fon vazifalari (masalan Telegram xabari) so'rov tugagach o'z sessiyasini ochadi.
+SessionMaker = Callable[[], AbstractAsyncContextManager[AsyncSession]]
+
+
+def get_session_maker() -> SessionMaker:
+    return SessionFactory

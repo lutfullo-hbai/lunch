@@ -10,12 +10,13 @@ os.environ.setdefault("LOGIN_RATE_LIMIT", "100000")
 os.environ.setdefault("REGISTER_RATE_LIMIT", "100000")
 
 from collections.abc import AsyncIterator  # noqa: E402
+from contextlib import asynccontextmanager  # noqa: E402
 
 import pytest  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
-from app.db.session import engine, get_db  # noqa: E402
+from app.db.session import engine, get_db, get_session_maker  # noqa: E402
 from app.main import create_app  # noqa: E402
 
 
@@ -45,6 +46,12 @@ async def db() -> AsyncIterator[AsyncSession]:
 @pytest.fixture
 async def client(app, db) -> AsyncIterator[AsyncClient]:
     app.dependency_overrides[get_db] = lambda: db
+
+    @asynccontextmanager
+    async def shared_session():
+        yield db  # fon vazifalari ham test tranzaksiyasini ko'rsin
+
+    app.dependency_overrides[get_session_maker] = lambda: shared_session
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

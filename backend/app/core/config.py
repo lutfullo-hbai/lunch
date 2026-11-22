@@ -21,7 +21,10 @@ def check_bcrypt_length(password: str) -> str:
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # Bo'sh qiymat (masalan `BOT_TOKEN=`) "berilmagan" deb hisoblanadi va default olinadi.
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore", env_ignore_empty=True
+    )
 
     app_name: str = "Lunch API"
     environment: Literal["development", "test", "staging", "production"] = "development"
@@ -76,6 +79,16 @@ class Settings(BaseSettings):
     # --- Buyurtma ---
     # Bitta buyurtmadagi har xil ovqatlar soni (juda katta so'rovdan himoya).
     order_max_lines: int = Field(default=50, ge=1)
+    currency: str = "so'm"
+
+    # --- Telegram: buyurtmalar guruhiga xabar ---
+    # Ikkalasi berilmasa, xabar yuborilmaydi (buyurtma baribir qabul qilinadi).
+    bot_token: SecretStr | None = None
+    orders_group_chat_id: int | None = None
+    telegram_api_url: str = "https://api.telegram.org"
+    telegram_timeout_seconds: float = Field(default=10, gt=0)
+    # Yuborilmasa, shuncha soniyadan keyin qayta uriniladi; hammasi tugasa `failed`.
+    notify_retry_delays: list[float] = [2, 4, 8]
 
     # --- Sahifalash ---
     page_size_default: int = Field(default=20, ge=1)

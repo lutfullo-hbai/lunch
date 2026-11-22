@@ -1,19 +1,27 @@
 """User buyurtmalari (JWT + imzo)."""
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, BackgroundTasks, status
 
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import CurrentUser, DbSession, Sessions
 from app.schemas.common import Page, Pagination
 from app.schemas.order import MyOrderOut, OrderCreate
 from app.schemas.types import Id
-from app.services import user_orders
+from app.services import order_notify, user_orders
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def create_order(data: OrderCreate, user: CurrentUser, db: DbSession) -> MyOrderOut:
-    return MyOrderOut.model_validate(await user_orders.create_order(db, user, data))
+async def create_order(
+    data: OrderCreate,
+    user: CurrentUser,
+    db: DbSession,
+    sessions: Sessions,
+    background: BackgroundTasks,
+) -> MyOrderOut:
+    order = await user_orders.create_order(db, user, data)
+    background.add_task(order_notify.notify_new_order, sessions, order.id)
+    return MyOrderOut.model_validate(order)
 
 
 @router.get("/me")
@@ -27,5 +35,13 @@ async def get_my_order(order_id: Id, user: CurrentUser, db: DbSession) -> MyOrde
 
 
 @router.post("/me/{order_id}/cancel")
-async def cancel_my_order(order_id: Id, user: CurrentUser, db: DbSession) -> MyOrderOut:
-    return MyOrderOut.model_validate(await user_orders.cancel_order(db, user, order_id))
+async def cancel_my_order(
+    order_id: Id,
+    user: CurrentUser,
+    db: DbSession,
+    sessions: Sessions,
+    background: BackgroundTasks,
+) -> MyOrderOut:
+    order = await user_orders.cancel_order(db, user, order_id)
+    background.add_task(order_notify.notify_cancelled, sessions, order.id)
+    return MyOrderOut.model_validate(order)

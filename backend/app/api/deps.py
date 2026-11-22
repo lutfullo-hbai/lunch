@@ -23,11 +23,12 @@ from app.core.signature import (
     compute_signature,
     is_timestamp_fresh,
 )
-from app.db.session import get_db
+from app.db.session import SessionMaker, get_db, get_session_maker
 from app.models import RefreshToken, User
 from app.models.enums import UserRole
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
+Sessions = Annotated[SessionMaker, Depends(get_session_maker)]
 
 _bearer = HTTPBearer(auto_error=False)
 
