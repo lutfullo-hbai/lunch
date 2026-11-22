@@ -154,6 +154,24 @@ async def test_logout_revokes_session(client):
     assert refresh.status_code == 401
 
 
+async def test_refresh_after_logout_keeps_other_sessions(client, monkeypatch):
+    # Bir tabda logout, boshqa tab eski token bilan refresh qiladi: bu o'g'irlik emas.
+    monkeypatch.setattr(get_settings(), "refresh_reuse_grace_seconds", 0)
+    tokens = await register(client)
+    other = (
+        await client.post(
+            f"{API}/auth/login", json={"email": "ali@example.com", "password": "secret-pass"}
+        )
+    ).json()
+    await signed_request(client, tokens, "POST", "/auth/logout")
+
+    refresh = await client.post(
+        f"{API}/auth/refresh", json={"refresh_token": tokens["refresh_token"]}
+    )
+    assert refresh.json()["error"]["code"] == "INVALID_REFRESH_TOKEN"
+    assert (await signed_request(client, other, "GET", "/me")).status_code == 200
+
+
 async def test_reuse_within_grace_keeps_sessions(client):
     tokens = await register(client)
     rotated = (

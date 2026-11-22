@@ -144,9 +144,10 @@ async def login(db: AsyncSession, data: LoginIn) -> IssuedTokens:
 async def refresh(db: AsyncSession, raw_token: str) -> IssuedTokens:
     """Refresh tokenni almashtiradi (rotation).
 
-    Bekor qilingan token qayta ishlatilsa, u o'g'irlangan deb hisoblanadi va
+    Almashtirilgan (rotated) token qayta ishlatilsa, u o'g'irlangan deb hisoblanadi va
     userning barcha sessiyalari bekor qilinadi. Istisno: token hozirgina (grace oynasi
     ichida) almashtirilgan bo'lsa, bu parallel so'rov, sessiyalar yopilmaydi.
+    Logout qilingan token shunchaki rad etiladi: boshqa qurilmalar chiqib ketmasin.
     """
     session = await db.scalar(
         select(RefreshToken)
@@ -157,6 +158,8 @@ async def refresh(db: AsyncSession, raw_token: str) -> IssuedTokens:
         raise invalid_refresh_token()
 
     if session.revoked_at is not None:
+        if session.replaced_by_jti is None:  # logout qilingan
+            raise invalid_refresh_token()
         if _recently_rotated(session):
             raise refresh_token_rotated()
         await revoke_all_sessions(db, session.user_id)
@@ -178,8 +181,6 @@ async def refresh(db: AsyncSession, raw_token: str) -> IssuedTokens:
 
 
 def _recently_rotated(session: RefreshToken) -> bool:
-    if session.replaced_by_jti is None or session.revoked_at is None:
-        return False
     grace = timedelta(seconds=get_settings().refresh_reuse_grace_seconds)
     return _now() - session.revoked_at <= grace
 
