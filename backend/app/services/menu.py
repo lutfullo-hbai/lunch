@@ -2,41 +2,20 @@
 
 from datetime import UTC, datetime
 
-from fastapi import UploadFile, status
-from sqlalchemy import func, select
+from fastapi import UploadFile
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.errors import AppError
-from app.db.query import contains
+from app.core.errors import menu_item_not_found, validation_error
+from app.db.query import PageResult, contains, paginate
 from app.models import Category, MenuItem
-from app.schemas.common import Page, PageParams
-from app.schemas.menu import MenuItemCreate, MenuItemOut, MenuItemUpdate
+from app.schemas.common import PageParams
+from app.schemas.menu import MenuItemCreate, MenuItemUpdate
 from app.services import images
 
 # Bu maydonlar bazada NOT NULL, PATCH'da null yuborilsa e'tiborsiz qoldiriladi.
 _REQUIRED_FIELDS = {"category_id", "name", "price", "is_available"}
-
-
-def to_out(item: MenuItem) -> MenuItemOut:
-    return MenuItemOut(
-        id=item.id,
-        category_id=item.category_id,
-        category_name=item.category.name if item.category else None,
-        name=item.name,
-        description=item.description,
-        price=item.price,
-        portion=item.portion,
-        is_available=item.is_available,
-        image_url=images.public_url(item.image_path),
-        thumb_url=images.public_url(images.thumb_path(item.image_path))
-        if item.image_path
-        else None,
-    )
-
-
-def _not_found() -> AppError:
-    return AppError(status.HTTP_404_NOT_FOUND, "MENU_ITEM_NOT_FOUND", "Ovqat topilmadi")
 
 
 def _active_items():
@@ -49,9 +28,7 @@ def _active_items():
 
 async def _ensure_category_exists(db: AsyncSession, category_id: int) -> None:
     if await db.get(Category, category_id) is None:
-        raise AppError(
-            status.HTTP_422_UNPROCESSABLE_CONTENT, "CATEGORY_NOT_FOUND", "Kategoriya topilmadi"
-        )
+        raise validation_error("category_id", "Kategoriya topilmadi")
 
 
 async def list_items(
@@ -60,7 +37,7 @@ async def list_items(
     category_id: int | None = None,
     search: str | None = None,
     is_available: bool | None = None,
-) -> Page[MenuItemOut]:
+) -> PageResult[MenuItem]:
     query = _active_items()
     if category_id is not None:
         query = query.where(MenuItem.category_id == category_id)
@@ -69,17 +46,14 @@ async def list_items(
     if is_available is not None:
         query = query.where(MenuItem.is_available == is_available)
 
-    total = await db.scalar(select(func.count()).select_from(query.subquery()))
-    rows = await db.scalars(
-        query.order_by(MenuItem.name, MenuItem.id).offset(page.offset).limit(page.size)
-    )
-    return Page(items=[to_out(i) for i in rows], total=total or 0, page=page.page, size=page.size)
+    query = query.order_by(MenuItem.name, MenuItem.id)
+    return await paginate(db, query, page.offset, page.size)
 
 
 async def get_item(db: AsyncSession, item_id: int) -> MenuItem:
     item = await db.scalar(_active_items().where(MenuItem.id == item_id))
     if item is None:
-        raise _not_found()
+        raise menu_item_not_found()
     return item
 
 
@@ -128,7 +102,7 @@ async def _lock_item(db: AsyncSession, item_id: int) -> MenuItem:
         .with_for_update()
     )
     if item is None:
-        raise _not_found()
+        raise menu_item_not_found()
     return item
 
 

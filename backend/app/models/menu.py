@@ -15,7 +15,7 @@ from sqlalchemy import (
     text,
     true,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, query_expression, relationship
 
 from app.db.base import Base, TimestampMixin
 
@@ -33,6 +33,8 @@ class Category(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
 
     items: Mapped[list["MenuItem"]] = relationship(back_populates="category")
+    # Ustun emas: o'chirilmagan ovqatlar soni, so'rovda `with_expression` bilan to'ldiriladi.
+    items_count: Mapped[int] = query_expression()
 
 
 class MenuItem(TimestampMixin, Base):

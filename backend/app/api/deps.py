@@ -3,14 +3,14 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import Depends, Request, status
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.body_buffer import RAW_BODY_STATE_KEY
 from app.core.config import get_settings
-from app.core.errors import AppError
+from app.core.errors import forbidden, unauthorized, user_inactive
 from app.core.security import decode_access_token, derive_signing_key
 from app.core.signature import (
     NONCE_HEADER,
@@ -25,7 +25,6 @@ from app.core.signature import (
 from app.db.session import get_db
 from app.models import RefreshToken, User
 from app.models.enums import UserRole
-from app.services.auth import user_inactive
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 
@@ -42,23 +41,17 @@ class AuthContext:
     session: RefreshToken
 
 
-def _unauthorized(code: str, message: str) -> AppError:
-    return AppError(
-        status.HTTP_401_UNAUTHORIZED, code, message, headers={"WWW-Authenticate": "Bearer"}
-    )
-
-
 async def _verify_signature(request: Request, signing_key: str, nonces: NonceStore) -> None:
     timestamp = request.headers.get(TIMESTAMP_HEADER)
     nonce = request.headers.get(NONCE_HEADER)
     signature = request.headers.get(SIGNATURE_HEADER)
     if not (timestamp and nonce and signature):
-        raise _unauthorized("SIGNATURE_MISSING", "So'rov imzosi yo'q")
+        raise unauthorized("SIGNATURE_MISSING", "So'rov imzosi yo'q")
     if len(nonce) > get_settings().nonce_max_length:
-        raise _unauthorized("SIGNATURE_INVALID", "Nonce juda uzun")
+        raise unauthorized("SIGNATURE_INVALID", "Nonce juda uzun")
 
     if not is_timestamp_fresh(timestamp, get_settings().signature_max_skew_seconds):
-        raise _unauthorized("SIGNATURE_EXPIRED", "So'rov vaqti eskirgan")
+        raise unauthorized("SIGNATURE_EXPIRED", "So'rov vaqti eskirgan")
 
     # Dekodlangan path emas, mijoz yuborgan xom baytlar: %2F, %0A kabi belgilar
     # imzo matnini o'zgartira olmaydi.
@@ -71,10 +64,10 @@ async def _verify_signature(request: Request, signing_key: str, nonces: NonceSto
         ),
     )
     if not hmac.compare_digest(expected, signature):
-        raise _unauthorized("SIGNATURE_INVALID", "So'rov imzosi noto'g'ri")
+        raise unauthorized("SIGNATURE_INVALID", "So'rov imzosi noto'g'ri")
 
     if not nonces.use(nonce):
-        raise _unauthorized("SIGNATURE_REPLAYED", "Bu so'rov allaqachon yuborilgan")
+        raise unauthorized("SIGNATURE_REPLAYED", "Bu so'rov allaqachon yuborilgan")
 
 
 async def get_auth_context(
@@ -85,11 +78,11 @@ async def get_auth_context(
 ) -> AuthContext:
     """Access token, sessiya va so'rov imzosini tekshiradi."""
     if credentials is None:
-        raise _unauthorized("NOT_AUTHENTICATED", "Tizimga kiring")
+        raise unauthorized("NOT_AUTHENTICATED", "Tizimga kiring")
 
     claims = decode_access_token(credentials.credentials)
     if claims is None:
-        raise _unauthorized("INVALID_TOKEN", "Access token yaroqsiz yoki muddati o'tgan")
+        raise unauthorized("INVALID_TOKEN", "Access token yaroqsiz yoki muddati o'tgan")
 
     session = await db.scalar(
         select(RefreshToken).where(
@@ -100,7 +93,7 @@ async def get_auth_context(
         )
     )
     if session is None:
-        raise _unauthorized("SESSION_REVOKED", "Sessiya tugagan, qayta kiring")
+        raise unauthorized("SESSION_REVOKED", "Sessiya tugagan, qayta kiring")
 
     await _verify_signature(request, derive_signing_key(session.jti), nonces)
 
@@ -122,7 +115,7 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 async def require_admin(user: CurrentUser) -> User:
     if user.role is not UserRole.ADMIN:
-        raise AppError(status.HTTP_403_FORBIDDEN, "FORBIDDEN", "Bu amal faqat admin uchun")
+        raise forbidden()
     return user
 
 

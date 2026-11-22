@@ -11,9 +11,9 @@ from app.core.body_buffer import BodyLimitMiddleware
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import setup_logging
+from app.core.media import OUTPUT_EXTENSION
 from app.core.signature import NONCE_HEADER, SIGNATURE_HEADER, TIMESTAMP_HEADER, NonceStore
 from app.db.session import engine
-from app.services.images import OUTPUT_EXTENSION
 
 
 @asynccontextmanager

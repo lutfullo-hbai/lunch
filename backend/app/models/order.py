@@ -8,6 +8,15 @@ from app.db.base import Base, TimestampMixin
 from app.db.types import pg_enum
 from app.models.enums import NotifyStatus, OrderStatus, PaymentMethod
 
+# Holatlar faqat oldinga yuradi. Yetkazilgan yoki bekor qilingan buyurtma yopiq.
+STATUS_TRANSITIONS: dict[OrderStatus, frozenset[OrderStatus]] = {
+    OrderStatus.NEW: frozenset({OrderStatus.ACCEPTED, OrderStatus.CANCELLED}),
+    OrderStatus.ACCEPTED: frozenset({OrderStatus.READY, OrderStatus.CANCELLED}),
+    OrderStatus.READY: frozenset({OrderStatus.DELIVERED, OrderStatus.CANCELLED}),
+    OrderStatus.DELIVERED: frozenset(),
+    OrderStatus.CANCELLED: frozenset(),
+}
+
 if TYPE_CHECKING:
     from app.models.menu import MenuItem
     from app.models.user import User
@@ -44,6 +53,11 @@ class Order(TimestampMixin, Base):
         back_populates="order", cascade="all, delete-orphan"
     )
 
+    @property
+    def allowed_statuses(self) -> list[OrderStatus]:
+        """Keyingi mumkin bo'lgan holatlar, enum tartibida (javob har doim bir xil bo'lsin)."""
+        return [s for s in OrderStatus if s in STATUS_TRANSITIONS[self.status]]
+
 
 class OrderItem(Base):
     """Buyurtma qatori. Nom va narx buyurtma paytidagi holatda saqlanadi (snapshot)."""
@@ -63,3 +77,7 @@ class OrderItem(Base):
 
     order: Mapped[Order] = relationship(back_populates="items")
     menu_item: Mapped["MenuItem"] = relationship()
+
+    @property
+    def subtotal(self) -> Decimal:
+        return self.price_snapshot * self.quantity

@@ -1,10 +1,11 @@
-from typing import Annotated
+from typing import Annotated, Self
 
-from fastapi import Depends, Query, status
+from fastapi import Depends, Query
 from pydantic import BaseModel
 
 from app.core.config import get_settings
-from app.core.errors import AppError
+from app.core.errors import validation_error
+from app.db.query import PageResult
 
 
 class Page[T](BaseModel):
@@ -12,6 +13,11 @@ class Page[T](BaseModel):
     total: int
     page: int
     size: int
+
+    @classmethod
+    def of(cls, result: PageResult, params: "PageParams") -> Self:
+        """Servis natijasini javobga aylantiradi: ORM obyektlar `T` sxemasi bilan tekshiriladi."""
+        return cls(items=result.items, total=result.total, page=params.page, size=params.size)
 
 
 class PageParams(BaseModel):
@@ -29,11 +35,7 @@ def _page_params(
 ) -> PageParams:
     settings = get_settings()
     if page > settings.page_number_max:
-        raise AppError(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
-            "PAGE_OUT_OF_RANGE",
-            f"page {settings.page_number_max} dan oshmasligi kerak",
-        )
+        raise validation_error("page", f"page {settings.page_number_max} dan oshmasligi kerak")
     size = min(size or settings.page_size_default, settings.page_size_max)
     return PageParams(page=page, size=size)
 

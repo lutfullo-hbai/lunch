@@ -31,6 +31,115 @@ class AppError(Exception):
         self.headers = headers
 
 
+# --- Xatolar katalogi -----------------------------------------------------------
+# Har bir xato kodi faqat shu yerda bitta joyda yaratiladi: bitta kod, bitta status.
+
+
+def validation_error(field: str, message: str) -> AppError:
+    """Pydantic validatsiya xatosi bilan bir xil format (VALIDATION_ERROR, 422)."""
+    return AppError(
+        status.HTTP_422_UNPROCESSABLE_CONTENT,
+        "VALIDATION_ERROR",
+        "Ma'lumotlar noto'g'ri",
+        details=[{"field": field, "message": message}],
+    )
+
+
+def unauthorized(code: str, message: str) -> AppError:
+    return AppError(
+        status.HTTP_401_UNAUTHORIZED, code, message, headers={"WWW-Authenticate": "Bearer"}
+    )
+
+
+def forbidden() -> AppError:
+    return AppError(status.HTTP_403_FORBIDDEN, "FORBIDDEN", "Bu amal faqat admin uchun")
+
+
+def invalid_credentials() -> AppError:
+    return AppError(
+        status.HTTP_401_UNAUTHORIZED, "INVALID_CREDENTIALS", "Email yoki parol noto'g'ri"
+    )
+
+
+def invalid_refresh_token() -> AppError:
+    return AppError(status.HTTP_401_UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "Refresh token yaroqsiz")
+
+
+def refresh_token_rotated() -> AppError:
+    return AppError(
+        status.HTTP_401_UNAUTHORIZED,
+        "REFRESH_TOKEN_ROTATED",
+        "Token boshqa so'rovda yangilangan, eng oxirgi tokendan foydalaning",
+    )
+
+
+def user_inactive() -> AppError:
+    return AppError(status.HTTP_403_FORBIDDEN, "USER_INACTIVE", "Hisob bloklangan")
+
+
+def email_taken() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT, "EMAIL_TAKEN", "Bu email allaqachon ro'yxatdan o'tgan"
+    )
+
+
+def user_not_found() -> AppError:
+    return AppError(status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND", "User topilmadi")
+
+
+def cannot_block_admin() -> AppError:
+    return AppError(status.HTTP_409_CONFLICT, "CANNOT_BLOCK_ADMIN", "Adminni bloklab bo'lmaydi")
+
+
+def category_not_found() -> AppError:
+    return AppError(status.HTTP_404_NOT_FOUND, "CATEGORY_NOT_FOUND", "Kategoriya topilmadi")
+
+
+def category_exists() -> AppError:
+    return AppError(status.HTTP_409_CONFLICT, "CATEGORY_EXISTS", "Bu nomli kategoriya bor")
+
+
+def category_not_empty(items_count: int) -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "CATEGORY_NOT_EMPTY",
+        "Kategoriyada ovqatlar bor. Avval ularni o'chiring yoki boshqa kategoriyaga o'tkazing",
+        details={"items_count": items_count},
+    )
+
+
+def menu_item_not_found() -> AppError:
+    return AppError(status.HTTP_404_NOT_FOUND, "MENU_ITEM_NOT_FOUND", "Ovqat topilmadi")
+
+
+def invalid_image(message: str) -> AppError:
+    return AppError(status.HTTP_422_UNPROCESSABLE_CONTENT, "INVALID_IMAGE", message)
+
+
+def image_too_large(max_mb: int) -> AppError:
+    return AppError(
+        status.HTTP_413_CONTENT_TOO_LARGE,
+        "IMAGE_TOO_LARGE",
+        f"Rasm hajmi {max_mb} MB dan oshmasligi kerak",
+    )
+
+
+def order_not_found() -> AppError:
+    return AppError(status.HTTP_404_NOT_FOUND, "ORDER_NOT_FOUND", "Buyurtma topilmadi")
+
+
+def invalid_status_transition(current: str, new: str, allowed: list[str]) -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "INVALID_STATUS_TRANSITION",
+        f"Buyurtma holatini '{current}' dan '{new}' ga o'zgartirib bo'lmaydi",
+        details={"current": current, "allowed": allowed},
+    )
+
+
+# --- Handlerlar -----------------------------------------------------------------
+
+
 def error_body(code: str, message: str, details: object | None = None) -> dict:
     error: dict = {"code": code, "message": message}
     if details is not None:

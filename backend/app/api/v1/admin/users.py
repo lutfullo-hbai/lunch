@@ -22,20 +22,22 @@ async def list_users(
     role: UserRole | None = None,
     is_active: bool | None = None,
 ) -> Page[AdminUserOut]:
-    return await service.list_users(db, page, search, role, is_active)
+    result = await service.list_users(db, page, search, role, is_active)
+    return Page[AdminUserOut].of(result, page)
 
 
 @router.get("/{user_id}")
 async def get_user(user_id: int, db: DbSession) -> AdminUserOut:
-    return await service.get_user(db, user_id)
+    return AdminUserOut.model_validate(await service.get_user(db, user_id))
 
 
 @router.get("/{user_id}/orders")
 async def user_orders(user_id: int, db: DbSession, page: Pagination) -> Page[OrderOut]:
     await service.get_user(db, user_id)  # user yo'q bo'lsa 404
-    return await orders_service.list_orders(db, page, OrderFilters(user_id=user_id))
+    result = await orders_service.list_orders(db, page, OrderFilters(user_id=user_id))
+    return Page[OrderOut].of(result, page)
 
 
 @router.patch("/{user_id}/status")
 async def set_status(user_id: int, data: UserStatusUpdate, db: DbSession) -> AdminUserOut:
-    return await service.set_status(db, user_id, data.is_active)
+    return AdminUserOut.model_validate(await service.set_status(db, user_id, data.is_active))

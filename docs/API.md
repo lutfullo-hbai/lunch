@@ -8,7 +8,15 @@ Barcha yo'llar `API_PREFIX` (default `/api/v1`) bilan boshlanadi. To'liq va doim
 {"error": {"code": "INVALID_CREDENTIALS", "message": "Email yoki parol noto'g'ri", "details": null}}
 ```
 
-Frontend `code` bo'yicha ishlaydi, `message` foydalanuvchiga ko'rsatish uchun.
+Frontend `code` bo'yicha ishlaydi, `message` foydalanuvchiga ko'rsatish uchun. Har bir `code` doim bitta HTTP status bilan keladi.
+
+Noto'g'ri kiritilgan ma'lumot (jumladan body'dagi mavjud bo'lmagan `category_id`, juda katta `page`, `date_from > date_to`) `422 VALIDATION_ERROR` qaytaradi, `details` da maydon nomi bo'ladi:
+
+```json
+{"error": {"code": "VALIDATION_ERROR", "message": "Ma'lumotlar noto'g'ri", "details": [{"field": "category_id", "message": "Kategoriya topilmadi"}]}}
+```
+
+URL'dagi ID topilmasa `404 <ENTITY>_NOT_FOUND` qaytadi.
 
 ## So'rov hajmi
 

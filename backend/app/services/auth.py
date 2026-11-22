@@ -4,13 +4,18 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from fastapi import status
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.errors import AppError
+from app.core.errors import (
+    email_taken,
+    invalid_credentials,
+    invalid_refresh_token,
+    refresh_token_rotated,
+    user_inactive,
+)
 from app.core.security import (
     create_access_token,
     derive_signing_key,
@@ -22,29 +27,6 @@ from app.core.security import (
 from app.models import RefreshToken, User
 from app.models.enums import UserRole
 from app.schemas.auth import LoginIn, RegisterIn
-
-
-def invalid_credentials() -> AppError:
-    return AppError(
-        status.HTTP_401_UNAUTHORIZED, "INVALID_CREDENTIALS", "Email yoki parol noto'g'ri"
-    )
-
-
-def invalid_refresh_token() -> AppError:
-    return AppError(status.HTTP_401_UNAUTHORIZED, "INVALID_REFRESH_TOKEN", "Refresh token yaroqsiz")
-
-
-def refresh_token_rotated() -> AppError:
-    return AppError(
-        status.HTTP_401_UNAUTHORIZED,
-        "REFRESH_TOKEN_ROTATED",
-        "Token boshqa so'rovda yangilangan, eng oxirgi tokendan foydalaning",
-    )
-
-
-def user_inactive() -> AppError:
-    return AppError(status.HTTP_403_FORBIDDEN, "USER_INACTIVE", "Hisob bloklangan")
-
 
 # Mavjud bo'lmagan email bilan login ham parolni tekshirgandek vaqt olishi uchun
 # (javob vaqtidan email bor-yo'qligini bilib bo'lmasin).
@@ -95,12 +77,6 @@ async def _issue_tokens(db: AsyncSession, user: User) -> IssuedTokens:
 
 async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
     return await db.scalar(select(User).where(func.lower(User.email) == email.lower()))
-
-
-def email_taken() -> AppError:
-    return AppError(
-        status.HTTP_409_CONFLICT, "EMAIL_TAKEN", "Bu email allaqachon ro'yxatdan o'tgan"
-    )
 
 
 async def register(db: AsyncSession, data: RegisterIn) -> IssuedTokens:

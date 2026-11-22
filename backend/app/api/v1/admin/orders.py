@@ -2,10 +2,9 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
-from fastapi import status as http_status
 
 from app.api.deps import DbSession
-from app.core.errors import AppError
+from app.core.errors import validation_error
 from app.models.enums import OrderStatus, PaymentMethod
 from app.schemas.common import Page, Pagination
 from app.schemas.order import OrderOut, OrderStatusUpdate
@@ -23,11 +22,7 @@ def order_filters(
     date_to: Annotated[date | None, Query(description="YYYY-MM-DD, shu kun ham kiradi")] = None,
 ) -> OrderFilters:
     if date_from and date_to and date_from > date_to:
-        raise AppError(
-            http_status.HTTP_422_UNPROCESSABLE_CONTENT,
-            "INVALID_DATE_RANGE",
-            "date_from date_to dan keyin bo'lmasligi kerak",
-        )
+        raise validation_error("date_from", "date_from date_to dan keyin bo'lmasligi kerak")
     return OrderFilters(status, payment_method, user_id, date_from, date_to)
 
 
@@ -36,14 +31,14 @@ Filters = Annotated[OrderFilters, Depends(order_filters)]
 
 @router.get("")
 async def list_orders(db: DbSession, page: Pagination, filters: Filters) -> Page[OrderOut]:
-    return await service.list_orders(db, page, filters)
+    return Page[OrderOut].of(await service.list_orders(db, page, filters), page)
 
 
 @router.get("/{order_id}")
 async def get_order(order_id: int, db: DbSession) -> OrderOut:
-    return service.to_out(await service.get_order(db, order_id))
+    return OrderOut.model_validate(await service.get_order(db, order_id))
 
 
 @router.patch("/{order_id}/status")
 async def change_status(order_id: int, data: OrderStatusUpdate, db: DbSession) -> OrderOut:
-    return service.to_out(await service.change_status(db, order_id, data.status))
+    return OrderOut.model_validate(await service.change_status(db, order_id, data.status))

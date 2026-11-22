@@ -115,7 +115,9 @@ async def test_invalid_date_range(client, admin):
         client, admin, "GET", "/admin/orders?date_from=2026-11-20&date_to=2026-11-19"
     )
     assert response.status_code == 422
-    assert response.json()["error"]["code"] == "INVALID_DATE_RANGE"
+    error = response.json()["error"]
+    assert error["code"] == "VALIDATION_ERROR"
+    assert error["details"][0]["field"] == "date_from"
 
 
 async def test_status_flow(client, admin, make_order):

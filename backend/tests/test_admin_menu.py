@@ -70,7 +70,9 @@ async def test_create_with_unknown_category(client, admin):
         client, admin, "POST", "/admin/menu", {"category_id": 999999, "name": "X", "price": "1"}
     )
     assert response.status_code == 422
-    assert response.json()["error"]["code"] == "CATEGORY_NOT_FOUND"
+    error = response.json()["error"]
+    assert error["code"] == "VALIDATION_ERROR"
+    assert error["details"][0]["field"] == "category_id"
 
 
 async def test_price_must_be_positive(client, admin, category):
@@ -238,4 +240,6 @@ async def test_page_number_limit(client, admin):
     too_far = get_settings().page_number_max + 1
     response = await signed_request(client, admin, "GET", f"/admin/menu?page={too_far}")
     assert response.status_code == 422
-    assert response.json()["error"]["code"] == "PAGE_OUT_OF_RANGE"
+    error = response.json()["error"]
+    assert error["code"] == "VALIDATION_ERROR"
+    assert error["details"][0]["field"] == "page"

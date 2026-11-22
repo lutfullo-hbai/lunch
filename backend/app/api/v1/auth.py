@@ -3,34 +3,23 @@ from fastapi import APIRouter, status
 from app.api.deps import Auth, CurrentUser, DbSession
 from app.schemas.auth import LoginIn, RefreshIn, RegisterIn, TokenOut, UserOut
 from app.services import auth as auth_service
-from app.services.auth import IssuedTokens
 
 router = APIRouter(tags=["auth"])
 
 
-def _to_out(tokens: IssuedTokens) -> TokenOut:
-    return TokenOut(
-        access_token=tokens.access_token,
-        refresh_token=tokens.refresh_token,
-        expires_in=tokens.expires_in,
-        signing_key=tokens.signing_key,
-        user=UserOut.model_validate(tokens.user),
-    )
-
-
 @router.post("/auth/register", status_code=status.HTTP_201_CREATED)
 async def register(data: RegisterIn, db: DbSession) -> TokenOut:
-    return _to_out(await auth_service.register(db, data))
+    return TokenOut.model_validate(await auth_service.register(db, data))
 
 
 @router.post("/auth/login")
 async def login(data: LoginIn, db: DbSession) -> TokenOut:
-    return _to_out(await auth_service.login(db, data))
+    return TokenOut.model_validate(await auth_service.login(db, data))
 
 
 @router.post("/auth/refresh")
 async def refresh(data: RefreshIn, db: DbSession) -> TokenOut:
-    return _to_out(await auth_service.refresh(db, data.refresh_token))
+    return TokenOut.model_validate(await auth_service.refresh(db, data.refresh_token))
 
 
 @router.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT)

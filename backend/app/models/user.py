@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, Index, String, func, text, true
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, query_expression
 
 from app.db.base import Base, TimestampMixin
 from app.db.types import pg_enum
@@ -25,3 +25,5 @@ class User(TimestampMixin, Base):
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Ustun emas: userning buyurtmalari soni, so'rovda `with_expression` bilan to'ldiriladi.
+    orders_count: Mapped[int] = query_expression()
