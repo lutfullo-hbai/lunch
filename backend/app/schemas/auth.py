@@ -1,10 +1,18 @@
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    StringConstraints,
+    field_validator,
+)
 
 from app.core.config import check_bcrypt_length, get_settings
 from app.models.enums import UserRole
-from app.schemas.types import Text
+from app.schemas.types import NoNul
 
 # Email har doim kichik harfda: Ali@x.uz va ali@x.uz bitta akkaunt.
 Email = Annotated[EmailStr, AfterValidator(str.lower)]
@@ -12,14 +20,12 @@ Password = Annotated[str, AfterValidator(check_bcrypt_length)]
 
 
 class RegisterIn(BaseModel):
-    full_name: Annotated[Text, Field(min_length=2, max_length=120)]
+    # Probellar uzunlik tekshiruvidan oldin olib tashlanadi: "   " ism bo'lib o'tmasin.
+    full_name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=2, max_length=120), NoNul
+    ]
     email: Email
     password: Password
-
-    @field_validator("full_name")
-    @classmethod
-    def strip_name(cls, value: str) -> str:
-        return value.strip()
 
     @field_validator("password")
     @classmethod

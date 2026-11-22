@@ -35,6 +35,27 @@ async def test_register_short_password(client):
     assert response.status_code == 422
 
 
+@pytest.mark.parametrize("full_name", ["     ", "  a  "])
+async def test_register_blank_or_short_name_after_strip(client, full_name):
+    response = await client.post(
+        f"{API}/auth/register",
+        json={"full_name": full_name, "email": "ali@example.com", "password": "secret-pass"},
+    )
+    assert response.status_code == 422
+
+
+async def test_register_strips_name(client):
+    response = await client.post(
+        f"{API}/auth/register",
+        json={
+            "full_name": "  Ali Valiyev  ",
+            "email": "ali@example.com",
+            "password": "secret-pass",
+        },
+    )
+    assert response.json()["user"]["full_name"] == "Ali Valiyev"
+
+
 async def test_login_success_and_wrong_password(client):
     await register(client)
 
