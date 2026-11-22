@@ -24,8 +24,9 @@ User email va parol bilan kiradi va ikkita token oladi. Admin bo'lsa dashboardga
 - **Register:** ism, email, parol. Parol bcrypt bilan hash qilinadi, email tasdiqlanmaydi.
 - **Login:** email va parol.
 - **Tokenlar:** access token (JWT) 1 kun, refresh token 7 kun. Refresh token har ishlatilganda yangisiga almashadi.
-- **Logout:** refresh token bazada bekor qilinadi.
-- **Imzo:** har bir so'rov HMAC-SHA256 bilan imzolanadi (`X-Timestamp`, `X-Nonce`, `X-Signature`). 60 soniyadan eski yoki takror so'rov rad etiladi.
+- **Logout:** refresh token bazada bekor qilinadi. Logout qilingan token bilan refresh rad etiladi, boshqa qurilmalar chiqib ketmaydi.
+- **Imzo:** har bir so'rov HMAC-SHA256 bilan imzolanadi (`X-Timestamp`, `X-Nonce`, `X-Signature`). 60 soniyadan eski yoki takror so'rov rad etiladi. Imzo kaliti alohida `SIGNING_SECRET` dan hosil qilinadi.
+- **Rate limit:** login va register IP bo'yicha cheklanadi, oshib ketsa `429`.
 - **Super admin:** `.env` orqali bitta yaratiladi. Register orqali admin bo'lib bo'lmaydi.
 
 ## 3. Rollar
@@ -55,14 +56,14 @@ PostgreSQL, 6 ta jadval. Sxemadagi har bir o'zgarish Alembic migratsiyasi bilan 
 
 | Jadval | Asosiy ustunlar |
 | --- | --- |
-| users | id, name, email (unique), phone, password_hash, role (user / admin), is_active, created_at |
-| refresh_tokens | id, user_id → users, token_hash, expires_at, revoked_at |
-| categories | id, name, sort_order |
-| menu_items | id, category_id → categories, name, price, portion, image_path, is_available, is_deleted |
-| orders | id, user_id → users, total, payment_method (cash / card), status, phone, address, created_at |
-| order_items | id, order_id → orders, menu_item_id → menu_items, quantity, price |
+| users | id, full_name, email (katta-kichik harfsiz unique), phone, password_hash, role (user / admin), is_active, last_login_at, created_at, updated_at |
+| refresh_tokens | id, user_id → users, jti (unique), token_hash (unique), expires_at, revoked_at, replaced_by_jti, created_at |
+| categories | id, name (katta-kichik harfsiz unique), sort_order, is_active, created_at, updated_at |
+| menu_items | id, category_id → categories (o'chirilsa NULL), name, description, price, portion, image_path, is_available, deleted_at, created_at, updated_at |
+| orders | id, user_id → users, total_price, payment_method (cash / card), status, phone, address, comment, notify_status, created_at, updated_at |
+| order_items | id, order_id → orders, menu_item_id → menu_items, name_snapshot, price_snapshot, quantity |
 
-Parol faqat hash ko'rinishida, refresh token ham faqat hash ko'rinishida saqlanadi. `order_items.price` buyurtma paytidagi narxni saqlaydi, shuning uchun menyuda narx o'zgarsa eski buyurtmalar o'zgarmaydi.
+Parol faqat hash ko'rinishida, refresh token ham faqat hash ko'rinishida saqlanadi. `order_items.name_snapshot` va `price_snapshot` buyurtma paytidagi nom va narxni saqlaydi, shuning uchun menyu o'zgarsa eski buyurtmalar o'zgarmaydi. Ovqat o'chirilganda qator qoladi (`deleted_at` to'ldiriladi), rasmi esa o'chiriladi. `refresh_tokens.replaced_by_jti` token almashtirilganini (rotation) logout'dan ajratadi.
 
 ## 7. API endpointlar
 
@@ -72,10 +73,10 @@ Barcha yo'llar `/api/v1` bilan boshlanadi. `/admin/*` faqat admin uchun.
 | --- | --- |
 | Auth | `POST /auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `GET /me` |
 | Dashboard | `GET /admin/stats` |
-| Menyu | `/admin/menu` (GET, POST, PATCH, DELETE) |
+| Menyu | `/admin/menu` (GET, POST, PATCH, DELETE), `PUT/DELETE /admin/menu/{id}/image` |
 | Kategoriyalar | `/admin/categories` (GET, POST, PATCH, DELETE) |
-| Userlar | `GET /admin/users`, `PATCH /admin/users/{id}/status` |
-| Buyurtmalar | `GET /admin/orders`, `PATCH /admin/orders/{id}/status` |
+| Userlar | `GET /admin/users`, `GET /admin/users/{id}`, `GET /admin/users/{id}/orders`, `PATCH /admin/users/{id}/status` |
+| Buyurtmalar | `GET /admin/orders`, `GET /admin/orders/{id}`, `PATCH /admin/orders/{id}/status` |
 
 ## 8. Sahifalar
 
