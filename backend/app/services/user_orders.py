@@ -18,6 +18,7 @@ from app.models import Order, OrderItem, User
 from app.models.enums import OrderStatus
 from app.schemas.common import PageParams
 from app.schemas.order import OrderCreate
+from app.schemas.types import INT32_MAX
 from app.services import catalog
 
 # Jami summa bazadagi ustunga sig'ishi kerak (NUMERIC(precision, scale)).
@@ -56,6 +57,9 @@ async def create_order(db: AsyncSession, user: User, data: OrderCreate) -> Order
     quantities: Counter[int] = Counter()
     for line in data.items:
         quantities[line.menu_item_id] += line.quantity
+    # Birlashtirilgan miqdor ham bazadagi INTEGER ustunga sig'ishi kerak.
+    if any(quantity > INT32_MAX for quantity in quantities.values()):
+        raise validation_error("items", "Ovqat miqdori juda katta")
 
     items = await catalog.get_items_by_ids(db, set(quantities))
     missing = sorted(set(quantities) - set(items))

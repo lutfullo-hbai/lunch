@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Annotated
 
 from annotated_types import Ge
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, Strict, field_validator
 
 from app.core.config import get_settings
 from app.models.enums import NotifyStatus, OrderStatus, PaymentMethod
@@ -44,9 +44,10 @@ class OrderOut(BaseModel):
 
 
 class OrderLineIn(BaseModel):
-    menu_item_id: Id
+    # Qat'iy butun son: "2" yoki true miqdor bo'lib o'tib ketmasin.
+    menu_item_id: Annotated[Id, Strict()]
     # Savatda "-" tugmasi 0 dan pastga tushirmaydi; backend ham 1 dan kamni qabul qilmaydi.
-    quantity: Annotated[Int32, Ge(1)]
+    quantity: Annotated[Int32, Ge(1), Strict()]
 
 
 class OrderCreate(BaseModel):

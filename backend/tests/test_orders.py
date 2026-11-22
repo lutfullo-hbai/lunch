@@ -168,3 +168,27 @@ async def test_user_cannot_cancel_someone_elses_order(client, user, menu):
     created = (await order(client, other, [line(menu["choy"])])).json()
     response = await signed_request(client, user, "POST", f"/orders/me/{created['id']}/cancel")
     assert response.status_code == 404
+
+
+async def test_merged_quantity_overflow_is_422(client, admin, user):
+    category = await make_category(client, admin, "Arzon")
+    cheap = await make_item(client, admin, category, "Saqich", price="0.01")
+    max_int = 2**31 - 1
+    response = await order(client, user, [line(cheap, max_int), line(cheap, max_int)])
+    assert response.status_code == 422
+    assert response.json()["error"]["details"][0]["field"] == "items"
+
+
+@pytest.mark.parametrize(
+    "bad_line",
+    [
+        {"menu_item_id": 1, "quantity": True},
+        {"menu_item_id": 1, "quantity": "2"},
+        {"menu_item_id": "1", "quantity": 1},
+    ],
+)
+async def test_non_integer_values_rejected(client, user, bad_line):
+    response = await signed_request(
+        client, user, "POST", "/orders", {"items": [bad_line], "payment_method": "cash"}
+    )
+    assert response.status_code == 422
