@@ -125,12 +125,24 @@ async def refresh(db: AsyncSession, raw_token: str) -> IssuedTokens:
     ichida) almashtirilgan bo'lsa, bu parallel so'rov, sessiyalar yopilmaydi.
     Logout qilingan token shunchaki rad etiladi: boshqa qurilmalar chiqib ketmasin.
     """
+    token_hash = hash_token(raw_token)
+    user_id = await db.scalar(
+        select(RefreshToken.user_id).where(RefreshToken.token_hash == token_hash)
+    )
+    if user_id is None:
+        raise invalid_refresh_token()
+
+    # Qulflar hamma joyda bir xil tartibda olinadi: avval user, keyin sessiya.
+    # User qulfi refresh'ni bloklash va "barcha sessiyalarni yopish" bilan ketma-ket
+    # qiladi: aks holda ular orasida yaratilgan yangi sessiya ochiq qolib ketardi.
+    user = await lock_user(db, user_id)
     session = await db.scalar(
         select(RefreshToken)
-        .where(RefreshToken.token_hash == hash_token(raw_token))
+        .where(RefreshToken.token_hash == token_hash)
         .with_for_update()  # bir token bilan parallel ikki refresh bo'lmasin
+        .execution_options(populate_existing=True)
     )
-    if session is None:
+    if user is None or session is None:
         raise invalid_refresh_token()
 
     if session.revoked_at is not None:
@@ -145,8 +157,7 @@ async def refresh(db: AsyncSession, raw_token: str) -> IssuedTokens:
     if session.expires_at <= _now():
         raise invalid_refresh_token()
 
-    user = await db.get(User, session.user_id)
-    if user is None or not user.is_active:
+    if not user.is_active:
         raise user_inactive()
 
     session.revoked_at = _now()
@@ -154,6 +165,16 @@ async def refresh(db: AsyncSession, raw_token: str) -> IssuedTokens:
     session.replaced_by_jti = tokens.session_id
     await db.commit()
     return tokens
+
+
+async def lock_user(db: AsyncSession, user_id: int) -> User | None:
+    """Userni FOR UPDATE bilan qulflaydi. Sessiyalarni o'zgartiradigan joylar shundan boshlanadi."""
+    return await db.scalar(
+        select(User)
+        .where(User.id == user_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
 
 
 def _recently_rotated(session: RefreshToken) -> bool:

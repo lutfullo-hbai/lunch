@@ -9,7 +9,7 @@ from app.db.query import PageResult, contains, paginate
 from app.models import Order, User
 from app.models.enums import UserRole
 from app.schemas.common import PageParams
-from app.services.auth import revoke_all_sessions
+from app.services.auth import lock_user, revoke_all_sessions
 
 
 def _with_orders_count():
@@ -56,7 +56,9 @@ async def get_user(db: AsyncSession, user_id: int) -> User:
 
 async def set_status(db: AsyncSession, user_id: int, is_active: bool) -> User:
     """Userni bloklaydi yoki blokdan chiqaradi. Bloklanganda barcha sessiyalari yopiladi."""
-    user = await db.get(User, user_id)
+    # Refresh bilan bir xil tartibda qulflanadi (avval user): bloklash paytida parallel
+    # refresh yangi sessiya ochib qo'ya olmaydi.
+    user = await lock_user(db, user_id)
     if user is None:
         raise user_not_found()
     if user.role is UserRole.ADMIN:

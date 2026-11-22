@@ -185,3 +185,41 @@ async def test_category_delete_and_item_create_do_not_both_win(live_client):
             await session.execute(delete(MenuItem).where(MenuItem.id.in_(item_ids)))
             await session.execute(delete(Category).where(Category.name.like("Race %")))
             await session.commit()
+
+
+async def test_refresh_waits_for_user_lock_so_block_closes_every_session(live_client):
+    """Bloklash va refresh bir vaqtda: refresh user qulfini kutadi va yangi sessiya ochmaydi."""
+    from sqlalchemy import func, select, text
+
+    from app.db.session import SessionFactory
+    from app.models import RefreshToken, User
+    from app.services.auth import revoke_all_sessions
+
+    tokens = await register(live_client, email=f"block@{LIVE_EMAIL_DOMAIN}")
+    user_id = tokens["user"]["id"]
+
+    async with SessionFactory() as admin_tx:
+        # Admin tranzaksiyasi userni qulflab turibdi (bloklash jarayoni).
+        await admin_tx.execute(
+            text("SELECT 1 FROM users WHERE id = :id FOR UPDATE"), {"id": user_id}
+        )
+        refresh = asyncio.create_task(
+            live_client.post(f"{API}/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
+        )
+        await asyncio.sleep(0.3)
+        assert not refresh.done(), "refresh user qulfini kutishi kerak"
+
+        user = await admin_tx.get(User, user_id)
+        user.is_active = False
+        await revoke_all_sessions(admin_tx, user_id)
+        await admin_tx.commit()
+
+    response = await refresh
+    assert response.status_code in (401, 403)
+    async with SessionFactory() as session:
+        live = await session.scalar(
+            select(func.count())
+            .select_from(RefreshToken)
+            .where(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None))
+        )
+    assert live == 0
