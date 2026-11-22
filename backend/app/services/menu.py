@@ -14,9 +14,6 @@ from app.schemas.common import PageParams
 from app.schemas.menu import MenuItemCreate, MenuItemUpdate
 from app.services import images
 
-# Bu maydonlar bazada NOT NULL, PATCH'da null yuborilsa e'tiborsiz qoldiriladi.
-_REQUIRED_FIELDS = {"category_id", "name", "price", "is_available"}
-
 
 def _active_items():
     return (
@@ -72,11 +69,7 @@ async def create_item(db: AsyncSession, data: MenuItemCreate) -> MenuItem:
 
 async def update_item(db: AsyncSession, item_id: int, data: MenuItemUpdate) -> MenuItem:
     item = await get_item(db, item_id)
-    changes = {
-        field: value
-        for field, value in data.model_dump(exclude_unset=True).items()
-        if value is not None or field not in _REQUIRED_FIELDS
-    }
+    changes = data.model_dump(exclude_unset=True)
     if "category_id" in changes:
         await _ensure_category_exists(db, changes["category_id"])
     for field, value in changes.items():

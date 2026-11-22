@@ -63,7 +63,7 @@ async def create_category(db: AsyncSession, data: CategoryCreate) -> Category:
 
 async def update_category(db: AsyncSession, category_id: int, data: CategoryUpdate) -> Category:
     category = await get_category(db, category_id)
-    changes = data.model_dump(exclude_unset=True, exclude_none=True)
+    changes = data.model_dump(exclude_unset=True)
     if "name" in changes:
         await _ensure_name_free(db, changes["name"], exclude_id=category_id)
     for field, value in changes.items():

@@ -6,6 +6,7 @@ from app.api.deps import DbSession
 from app.models.enums import UserRole
 from app.schemas.common import Page, Pagination
 from app.schemas.order import OrderOut
+from app.schemas.types import Id
 from app.schemas.user import AdminUserOut, UserStatusUpdate
 from app.services import orders as orders_service
 from app.services import users as service
@@ -27,17 +28,17 @@ async def list_users(
 
 
 @router.get("/{user_id}")
-async def get_user(user_id: int, db: DbSession) -> AdminUserOut:
+async def get_user(user_id: Id, db: DbSession) -> AdminUserOut:
     return AdminUserOut.model_validate(await service.get_user(db, user_id))
 
 
 @router.get("/{user_id}/orders")
-async def user_orders(user_id: int, db: DbSession, page: Pagination) -> Page[OrderOut]:
+async def user_orders(user_id: Id, db: DbSession, page: Pagination) -> Page[OrderOut]:
     await service.get_user(db, user_id)  # user yo'q bo'lsa 404
     result = await orders_service.list_orders(db, page, OrderFilters(user_id=user_id))
     return Page[OrderOut].of(result, page)
 
 
 @router.patch("/{user_id}/status")
-async def set_status(user_id: int, data: UserStatusUpdate, db: DbSession) -> AdminUserOut:
+async def set_status(user_id: Id, data: UserStatusUpdate, db: DbSession) -> AdminUserOut:
     return AdminUserOut.model_validate(await service.set_status(db, user_id, data.is_active))

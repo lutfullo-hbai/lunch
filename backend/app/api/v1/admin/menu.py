@@ -5,6 +5,7 @@ from fastapi import APIRouter, File, Query, UploadFile, status
 from app.api.deps import DbSession
 from app.schemas.common import Page, Pagination
 from app.schemas.menu import MenuItemCreate, MenuItemOut, MenuItemUpdate
+from app.schemas.types import Id
 from app.services import menu as service
 
 router = APIRouter(prefix="/menu", tags=["admin: menu"])
@@ -14,7 +15,7 @@ router = APIRouter(prefix="/menu", tags=["admin: menu"])
 async def list_items(
     db: DbSession,
     page: Pagination,
-    category_id: int | None = None,
+    category_id: Id | None = None,
     search: Annotated[str | None, Query(max_length=100)] = None,
     is_available: bool | None = None,
 ) -> Page[MenuItemOut]:
@@ -23,7 +24,7 @@ async def list_items(
 
 
 @router.get("/{item_id}")
-async def get_item(item_id: int, db: DbSession) -> MenuItemOut:
+async def get_item(item_id: Id, db: DbSession) -> MenuItemOut:
     return MenuItemOut.model_validate(await service.get_item(db, item_id))
 
 
@@ -33,22 +34,22 @@ async def create_item(data: MenuItemCreate, db: DbSession) -> MenuItemOut:
 
 
 @router.patch("/{item_id}")
-async def update_item(item_id: int, data: MenuItemUpdate, db: DbSession) -> MenuItemOut:
+async def update_item(item_id: Id, data: MenuItemUpdate, db: DbSession) -> MenuItemOut:
     return MenuItemOut.model_validate(await service.update_item(db, item_id, data))
 
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_item(item_id: int, db: DbSession) -> None:
+async def delete_item(item_id: Id, db: DbSession) -> None:
     await service.delete_item(db, item_id)
 
 
 @router.put("/{item_id}/image")
 async def upload_image(
-    item_id: int, db: DbSession, image: Annotated[UploadFile, File()]
+    item_id: Id, db: DbSession, image: Annotated[UploadFile, File()]
 ) -> MenuItemOut:
     return MenuItemOut.model_validate(await service.set_image(db, item_id, image))
 
 
 @router.delete("/{item_id}/image")
-async def delete_image(item_id: int, db: DbSession) -> MenuItemOut:
+async def delete_image(item_id: Id, db: DbSession) -> MenuItemOut:
     return MenuItemOut.model_validate(await service.remove_image(db, item_id))

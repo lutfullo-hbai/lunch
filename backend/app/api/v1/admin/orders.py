@@ -8,6 +8,7 @@ from app.core.errors import validation_error
 from app.models.enums import OrderStatus, PaymentMethod
 from app.schemas.common import Page, Pagination
 from app.schemas.order import OrderOut, OrderStatusUpdate
+from app.schemas.types import Id
 from app.services import orders as service
 from app.services.orders import OrderFilters
 
@@ -17,7 +18,7 @@ router = APIRouter(prefix="/orders", tags=["admin: orders"])
 def order_filters(
     status: OrderStatus | None = None,
     payment_method: PaymentMethod | None = None,
-    user_id: int | None = None,
+    user_id: Id | None = None,
     date_from: Annotated[date | None, Query(description="YYYY-MM-DD, TIMEZONE bo'yicha")] = None,
     date_to: Annotated[date | None, Query(description="YYYY-MM-DD, shu kun ham kiradi")] = None,
 ) -> OrderFilters:
@@ -35,10 +36,10 @@ async def list_orders(db: DbSession, page: Pagination, filters: Filters) -> Page
 
 
 @router.get("/{order_id}")
-async def get_order(order_id: int, db: DbSession) -> OrderOut:
+async def get_order(order_id: Id, db: DbSession) -> OrderOut:
     return OrderOut.model_validate(await service.get_order(db, order_id))
 
 
 @router.patch("/{order_id}/status")
-async def change_status(order_id: int, data: OrderStatusUpdate, db: DbSession) -> OrderOut:
+async def change_status(order_id: Id, data: OrderStatusUpdate, db: DbSession) -> OrderOut:
     return OrderOut.model_validate(await service.change_status(db, order_id, data.status))

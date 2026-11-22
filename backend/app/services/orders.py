@@ -46,7 +46,7 @@ async def list_orders(
         query = query.where(Order.user_id == filters.user_id)
     if filters.date_from is not None:
         query = query.where(Order.created_at >= _start_of_day(filters.date_from))
-    if filters.date_to is not None:
+    if filters.date_to is not None and filters.date_to < date.max:  # date.max + 1 kun bo'lmaydi
         query = query.where(Order.created_at < _start_of_day(filters.date_to + timedelta(days=1)))
 
     query = query.order_by(Order.created_at.desc(), Order.id.desc())

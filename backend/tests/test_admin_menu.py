@@ -109,12 +109,12 @@ async def test_update_item(client, admin, category):
         admin,
         "PATCH",
         f"/admin/menu/{item['id']}",
-        {"price": "50000", "description": None, "name": None},
+        {"price": "50000", "description": None},
     )
     body = response.json()
     assert Decimal(body["price"]) == Decimal("50000")
-    assert body["description"] is None  # bo'sh qilish mumkin
-    assert body["name"] == "Palov"  # majburiy maydon null bilan o'chmaydi
+    assert body["description"] is None  # ixtiyoriy maydonni bo'sh qilish mumkin
+    assert body["name"] == "Palov"  # yuborilmagan maydon o'zgarmaydi
 
 
 async def test_soft_delete(client, admin, category, db):
