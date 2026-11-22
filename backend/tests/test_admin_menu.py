@@ -160,6 +160,26 @@ async def test_upload_image_resizes_to_webp(client, admin, category, media_dir):
         assert max(small.size) == get_settings().image_thumb_size
 
 
+def rotated_jpeg_bytes() -> bytes:
+    """2000x1000 JPEG, EXIF bo'yicha 90 gradus burilgan (Orientation=6)."""
+    exif = Image.Exif()
+    exif[0x0112] = 6
+    buffer = io.BytesIO()
+    Image.new("RGB", (2000, 1000), "green").save(buffer, format="JPEG", exif=exif)
+    return buffer.getvalue()
+
+
+async def test_upload_jpeg_keeps_orientation_and_sizes(client, admin, category, media_dir):
+    item = await create_item(client, admin, category)
+    body = (await upload(client, admin, item["id"], rotated_jpeg_bytes(), "x.jpg")).json()
+
+    prefix = get_settings().media_url_prefix + "/"
+    with Image.open(media_dir / body["image_url"].removeprefix(prefix)) as large:
+        assert large.size == (600, 1200)  # burilgan: endi tik rasm
+    with Image.open(media_dir / body["thumb_url"].removeprefix(prefix)) as small:
+        assert small.size == (200, 400)
+
+
 async def test_replace_image_deletes_old_files(client, admin, category, media_dir):
     item = await create_item(client, admin, category)
     await upload(client, admin, item["id"], png_bytes())

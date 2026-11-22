@@ -65,7 +65,10 @@ class Settings(BaseSettings):
     media_dir: Path = Path("media")
     media_url_prefix: str = "/media"
     image_max_upload_mb: int = Field(default=5, ge=1)
-    image_max_pixels: int = Field(default=40_000_000, ge=1)  # "decompression bomb"dan himoya
+    # "Decompression bomb"dan himoya: 16 MP RGBA rasm ochilganda ~64 MB xotira oladi.
+    image_max_pixels: int = Field(default=16_000_000, ge=1)
+    # Bir vaqtda nechta rasm qayta ishlanadi (har biri yuzlab MB xotira olishi mumkin).
+    image_max_parallel: int = Field(default=2, ge=1)
     image_size: int = Field(default=1200, ge=100)
     image_thumb_size: int = Field(default=400, ge=50)
     image_quality: int = Field(default=85, ge=1, le=100)

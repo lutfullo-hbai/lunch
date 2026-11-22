@@ -6,6 +6,7 @@ Har bir rasm uchun ikki fayl saqlanadi:
 Bazada faqat katta faylning nisbiy yo'li saqlanadi.
 """
 
+import asyncio
 import io
 import uuid
 from datetime import UTC, datetime
@@ -32,12 +33,22 @@ async def _read_limited(upload: UploadFile) -> bytes:
     return data
 
 
-def _resize_to_webp(image: Image.Image, max_side: int, quality: int) -> bytes:
-    copy = image.copy()
-    copy.thumbnail((max_side, max_side))
+def _shrink_to_webp(image: Image.Image, max_side: int, quality: int) -> bytes:
+    """Rasmni joyida (nusxasiz) kichraytiradi va WebP baytlarini qaytaradi."""
+    image.thumbnail((max_side, max_side))
     buffer = io.BytesIO()
-    copy.save(buffer, format="WEBP", quality=quality)
+    image.save(buffer, format="WEBP", quality=quality)
     return buffer.getvalue()
+
+
+_semaphore: asyncio.Semaphore | None = None
+
+
+def _processing_slots() -> asyncio.Semaphore:
+    global _semaphore
+    if _semaphore is None:
+        _semaphore = asyncio.Semaphore(get_settings().image_max_parallel)
+    return _semaphore
 
 
 def _process(data: bytes) -> tuple[bytes, bytes]:
@@ -55,13 +66,15 @@ def _process(data: bytes) -> tuple[bytes, bytes]:
                 raise invalid_image("Rasm o'lchami (piksellar soni) juda katta")
             probe.verify()  # fayl buzilmaganini tekshiradi
         with Image.open(io.BytesIO(data)) as source:
+            # JPEG'ni dekodlashdayoq kichikroq o'lchamda ochadi (boshqa formatlarga ta'sir yo'q).
+            source.draft(None, (settings.image_size, settings.image_size))
             image = ImageOps.exif_transpose(source)
             if image.mode not in ("RGB", "RGBA"):
                 image = image.convert("RGBA" if "A" in image.getbands() else "RGB")
-            return (
-                _resize_to_webp(image, settings.image_size, settings.image_quality),
-                _resize_to_webp(image, settings.image_thumb_size, settings.image_quality),
-            )
+            # Bitta nusxa ketma-ket kichraytiriladi: avval katta, keyin undan thumb.
+            large = _shrink_to_webp(image, settings.image_size, settings.image_quality)
+            thumb = _shrink_to_webp(image, settings.image_thumb_size, settings.image_quality)
+            return large, thumb
     except (UnidentifiedImageError, Image.DecompressionBombError, OSError, SyntaxError) as exc:
         raise invalid_image("Fayl rasm emas yoki buzilgan") from exc
 
@@ -75,7 +88,8 @@ def _write(relative_path: str, content: bytes) -> None:
 async def save_menu_image(upload: UploadFile) -> str:
     """Rasmni saqlaydi va bazaga yoziladigan nisbiy yo'lni qaytaradi."""
     data = await _read_limited(upload)
-    large, thumb = await run_in_threadpool(_process, data)
+    async with _processing_slots():
+        large, thumb = await run_in_threadpool(_process, data)
 
     now = datetime.now(UTC)
     relative = f"menu/{now:%Y}/{now:%m}/{uuid.uuid4().hex}{OUTPUT_EXTENSION}"
