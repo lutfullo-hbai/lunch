@@ -2,7 +2,7 @@
 
 - Har bir so'rovga chegara qo'yiladi. Katta chegara (MAX_REQUEST_MB, rasm yuklash)
   faqat yaroqli access token bilan kelgan so'rovga beriladi, qolganlariga (login,
-  register, refresh) MAX_UNSIGNED_REQUEST_KB. Imzo body'siz tekshirilmaydi, shuning
+  register, refresh) MAX_ANONYMOUS_REQUEST_KB. Imzo body'siz tekshirilmaydi, shuning
   uchun bu yerda faqat token (JWT imzosi va muddati) tekshiriladi: soxta
   `X-Signature` sarlavhasi katta chegarani bermaydi. Chegara ilova body'ni
   o'qishidan oldin tekshiriladi, katta so'rov oxirigacha o'qilmaydi.

@@ -9,12 +9,12 @@ from tests.helpers import register
 API = get_settings().api_prefix
 
 
-def unsigned_limit() -> int:
-    return get_settings().max_unsigned_request_kb * 1024
+def anonymous_limit() -> int:
+    return get_settings().max_anonymous_request_kb * 1024
 
 
-async def test_unsigned_large_login_rejected_before_parsing(client):
-    big = b"x" * (unsigned_limit() + 1)
+async def test_anonymous_large_login_rejected_before_parsing(client):
+    big = b"x" * (anonymous_limit() + 1)
     response = await client.post(
         f"{API}/auth/login", content=big, headers={"Content-Type": "application/json"}
     )
@@ -22,9 +22,9 @@ async def test_unsigned_large_login_rejected_before_parsing(client):
     assert response.json()["error"]["code"] == "REQUEST_TOO_LARGE"
 
 
-async def test_unsigned_large_upload_rejected_before_auth(client):
-    # Imzosiz va tokensiz katta fayl: 401 gacha yetib bormasdan 413.
-    big = b"0" * (unsigned_limit() + 1)
+async def test_anonymous_large_upload_rejected_before_auth(client):
+    # Tokensiz katta fayl: 401 gacha yetib bormasdan 413.
+    big = b"0" * (anonymous_limit() + 1)
     response = await client.put(f"{API}/admin/menu/1/image", files={"image": ("x.png", big)})
     assert response.status_code == 413
 
@@ -32,7 +32,7 @@ async def test_unsigned_large_upload_rejected_before_auth(client):
 async def test_limit_applies_without_content_length(client):
     async def chunks():
         for _ in range(3):
-            yield b"x" * unsigned_limit()
+            yield b"x" * anonymous_limit()
 
     # Generator body chunked yuboriladi, Content-Length bo'lmaydi.
     response = await client.post(f"{API}/auth/login", content=chunks())
@@ -54,7 +54,7 @@ async def test_small_unsigned_request_passes(client):
     ],
 )
 async def test_fake_signature_header_does_not_raise_limit(client, headers):
-    big = b"0" * (unsigned_limit() + 1)
+    big = b"0" * (anonymous_limit() + 1)
     response = await client.put(
         f"{API}/admin/menu/1/image", files={"image": ("x.png", big)}, headers=headers
     )
@@ -63,7 +63,7 @@ async def test_fake_signature_header_does_not_raise_limit(client, headers):
 
 async def test_valid_token_gets_large_limit(client):
     tokens = await register(client)
-    big = b"0" * (unsigned_limit() + 1)
+    big = b"0" * (anonymous_limit() + 1)
     response = await client.put(
         f"{API}/admin/menu/1/image",
         files={"image": ("x.png", big)},

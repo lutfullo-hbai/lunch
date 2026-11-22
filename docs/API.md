@@ -21,7 +21,7 @@ URL'dagi ID topilmasa `404 <ENTITY>_NOT_FOUND` qaytadi.
 ## So'rov hajmi
 
 - **Yaroqli access token bilan:** `MAX_REQUEST_MB` gacha. Rasm yuklash shunga kiradi.
-- **Tokensiz (yoki yaroqsiz token bilan):** `MAX_UNSIGNED_REQUEST_KB` gacha. Bular login, register va refresh. Faqat `X-Signature` sarlavhasini qo'shish katta chegarani bermaydi.
+- **Tokensiz (yoki yaroqsiz token bilan):** `MAX_ANONYMOUS_REQUEST_KB` gacha. Bular login, register va refresh. Faqat `X-Signature` sarlavhasini qo'shish katta chegarani bermaydi.
 
 Chegaradan katta so'rov `413 REQUEST_TOO_LARGE` bilan rad etiladi. Production'da nginx'ga ham `client_max_body_size` qo'ying.
 

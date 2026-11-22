@@ -44,12 +44,12 @@ async def delete_item(item_id: Id, db: DbSession) -> None:
 
 
 @router.put("/{item_id}/image")
-async def upload_image(
+async def set_image(
     item_id: Id, db: DbSession, image: Annotated[UploadFile, File()]
 ) -> MenuItemOut:
     return MenuItemOut.model_validate(await service.set_image(db, item_id, image))
 
 
 @router.delete("/{item_id}/image")
-async def delete_image(item_id: Id, db: DbSession) -> MenuItemOut:
+async def remove_image(item_id: Id, db: DbSession) -> MenuItemOut:
     return MenuItemOut.model_validate(await service.remove_image(db, item_id))

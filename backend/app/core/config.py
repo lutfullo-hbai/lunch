@@ -13,6 +13,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BCRYPT_MAX_BYTES = 72
 
 
+def check_bcrypt_length(password: str) -> str:
+    """Belgi emas, bayt sanaladi: kirill harfi 2 bayt."""
+    if len(password.encode()) > BCRYPT_MAX_BYTES:
+        raise ValueError(f"Parol {BCRYPT_MAX_BYTES} baytdan oshmasligi kerak")
+    return password
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -43,10 +50,10 @@ class Settings(BaseSettings):
     bcrypt_rounds: int = Field(default=12, ge=4, le=16)
     password_min_length: int = Field(default=8, ge=6)
 
-    # Imzolangan so'rov tanasining maksimal hajmi (rasm yuklashni ham hisobga oladi).
+    # Yaroqli access token bilan kelgan so'rov tanasining maksimal hajmi (rasm yuklash ham).
     max_request_mb: int = Field(default=6, ge=1)
-    # Imzosiz so'rovlar (login, register, refresh) kichik JSON, katta body kerak emas.
-    max_unsigned_request_kb: int = Field(default=64, ge=1)
+    # Tokensiz so'rovlar (login, register, refresh) kichik JSON, katta body kerak emas.
+    max_anonymous_request_kb: int = Field(default=64, ge=1)
 
     # --- Rate limit (IP bo'yicha): oynada ruxsat etilgan urinishlar soni ---
     login_rate_limit: int = Field(default=10, ge=1)
@@ -83,8 +90,8 @@ class Settings(BaseSettings):
     @field_validator("super_admin_password")
     @classmethod
     def check_admin_password(cls, value: SecretStr | None) -> SecretStr | None:
-        if value is not None and len(value.get_secret_value().encode()) > BCRYPT_MAX_BYTES:
-            raise ValueError(f"SUPER_ADMIN_PASSWORD {BCRYPT_MAX_BYTES} baytdan oshmasligi kerak")
+        if value is not None:
+            check_bcrypt_length(value.get_secret_value())
         return value
 
     @model_validator(mode="after")

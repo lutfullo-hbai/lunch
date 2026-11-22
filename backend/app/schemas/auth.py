@@ -1,51 +1,37 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from typing import Annotated
 
-from app.core.config import BCRYPT_MAX_BYTES, get_settings
+from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+from app.core.config import check_bcrypt_length, get_settings
 from app.models.enums import UserRole
+
+# Email har doim kichik harfda: Ali@x.uz va ali@x.uz bitta akkaunt.
+Email = Annotated[EmailStr, AfterValidator(str.lower)]
+Password = Annotated[str, AfterValidator(check_bcrypt_length)]
 
 
 class RegisterIn(BaseModel):
     full_name: str = Field(min_length=2, max_length=120)
-    email: EmailStr
-    password: str
+    email: Email
+    password: Password
 
     @field_validator("full_name")
     @classmethod
     def strip_name(cls, value: str) -> str:
         return value.strip()
 
-    @field_validator("email")
-    @classmethod
-    def lower_email(cls, value: str) -> str:
-        return value.lower()
-
     @field_validator("password")
     @classmethod
-    def check_password(cls, value: str) -> str:
+    def check_min_length(cls, value: str) -> str:
         min_length = get_settings().password_min_length
         if len(value) < min_length:
             raise ValueError(f"Parol kamida {min_length} belgidan iborat bo'lishi kerak")
-        if len(value.encode()) > BCRYPT_MAX_BYTES:
-            raise ValueError(f"Parol {BCRYPT_MAX_BYTES} baytdan oshmasligi kerak")
         return value
 
 
 class LoginIn(BaseModel):
-    email: EmailStr
-    password: str = Field(min_length=1)
-
-    @field_validator("password")
-    @classmethod
-    def check_password_bytes(cls, value: str) -> str:
-        # Belgi emas, bayt sanaladi: kirill harfi 2 bayt.
-        if len(value.encode()) > BCRYPT_MAX_BYTES:
-            raise ValueError(f"Parol {BCRYPT_MAX_BYTES} baytdan oshmasligi kerak")
-        return value
-
-    @field_validator("email")
-    @classmethod
-    def lower_email(cls, value: str) -> str:
-        return value.lower()
+    email: Email
+    password: Annotated[Password, Field(min_length=1)]
 
 
 class RefreshIn(BaseModel):

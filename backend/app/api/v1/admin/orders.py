@@ -41,5 +41,5 @@ async def get_order(order_id: Id, db: DbSession) -> OrderOut:
 
 
 @router.patch("/{order_id}/status")
-async def change_status(order_id: Id, data: OrderStatusUpdate, db: DbSession) -> OrderOut:
-    return OrderOut.model_validate(await service.change_status(db, order_id, data.status))
+async def set_status(order_id: Id, data: OrderStatusUpdate, db: DbSession) -> OrderOut:
+    return OrderOut.model_validate(await service.set_status(db, order_id, data.status))

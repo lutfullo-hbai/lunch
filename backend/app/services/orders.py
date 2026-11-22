@@ -60,7 +60,7 @@ async def get_order(db: AsyncSession, order_id: int) -> Order:
     return order
 
 
-async def change_status(db: AsyncSession, order_id: int, new_status: OrderStatus) -> Order:
+async def set_status(db: AsyncSession, order_id: int, new_status: OrderStatus) -> Order:
     # Ikki admin bir vaqtda o'zgartirsa, ikkinchisi birinchisining natijasini ko'radi.
     order = await db.scalar(_base_query().where(Order.id == order_id).with_for_update(of=Order))
     if order is None:
