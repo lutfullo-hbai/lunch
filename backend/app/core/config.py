@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Literal
 from zoneinfo import ZoneInfo
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # bcrypt faqat birinchi 72 baytni hisobga oladi (bcrypt 5 esa uzunrog'ida xato beradi).
@@ -29,6 +29,9 @@ class Settings(BaseSettings):
 
     # --- Auth ---
     jwt_secret: SecretStr = Field(min_length=32)
+    # So'rov imzosi kalitlari shundan hosil qilinadi. JWT_SECRET'dan farqli bo'lishi shart:
+    # biri sizib chiqsa, ikkinchisi xavfsiz qoladi.
+    signing_secret: SecretStr = Field(min_length=32)
     jwt_algorithm: str = "HS256"
     access_token_ttl_minutes: int = Field(default=1440, ge=1)  # 1 kun
     refresh_token_ttl_days: int = Field(default=7, ge=1)
@@ -77,6 +80,12 @@ class Settings(BaseSettings):
         if value is not None and len(value.get_secret_value().encode()) > BCRYPT_MAX_BYTES:
             raise ValueError(f"SUPER_ADMIN_PASSWORD {BCRYPT_MAX_BYTES} baytdan oshmasligi kerak")
         return value
+
+    @model_validator(mode="after")
+    def check_secrets_differ(self) -> "Settings":
+        if self.signing_secret.get_secret_value() == self.jwt_secret.get_secret_value():
+            raise ValueError("SIGNING_SECRET JWT_SECRET bilan bir xil bo'lmasligi kerak")
+        return self
 
     @property
     def cors_origin_list(self) -> list[str]:

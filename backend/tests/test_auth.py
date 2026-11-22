@@ -209,6 +209,28 @@ def test_super_admin_password_over_limit_rejected():
         Settings(super_admin_password="ж" * 40)
 
 
+def test_signing_secret_must_differ_from_jwt_secret():
+    from pydantic import ValidationError
+
+    from app.core.config import Settings
+
+    with pytest.raises(ValidationError, match="SIGNING_SECRET"):
+        Settings(signing_secret=get_settings().jwt_secret.get_secret_value())
+
+
+def test_signing_key_uses_signing_secret(monkeypatch):
+    import uuid
+
+    from pydantic import SecretStr
+
+    from app.core.security import derive_signing_key
+
+    session_id = uuid.uuid4()
+    before = derive_signing_key(session_id)
+    monkeypatch.setattr(get_settings(), "signing_secret", SecretStr("z" * 40))
+    assert derive_signing_key(session_id) != before
+
+
 async def test_signature_too_long_nonce(client):
     tokens = await register(client)
     headers = signed_headers(tokens, "GET", f"{API}/me")

@@ -360,6 +360,7 @@ bot/
 | `ORDERS_GROUP_CHAT_ID` | `-1001234567890` | Buyurtmalar guruhi |
 | `DATABASE_URL` | `postgresql+asyncpg://app:***@db:5432/food` | DB ulanishi |
 | `JWT_SECRET` | 64 belgili tasodifiy qator | JWT imzo kaliti |
+| `SIGNING_SECRET` | boshqa 64 belgili tasodifiy qator | So'rov imzosi kalitlari shundan hosil qilinadi |
 | `BCRYPT_ROUNDS` | `12` | Parol hash kuchi |
 | `ACCESS_TOKEN_TTL_MIN` | `15` | |
 | `REFRESH_TOKEN_TTL_DAYS` | `7` | |

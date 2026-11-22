@@ -36,7 +36,7 @@ def new_refresh_token() -> str:
 
 def derive_signing_key(session_id: uuid.UUID) -> str:
     """Sessiyaga xos imzo kaliti. Bazada saqlanmaydi, har safar qayta hisoblanadi."""
-    secret = get_settings().jwt_secret.get_secret_value().encode()
+    secret = get_settings().signing_secret.get_secret_value().encode()
     return hmac.new(secret, b"signing-key:" + session_id.bytes, hashlib.sha256).hexdigest()
 
 

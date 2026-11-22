@@ -3,6 +3,7 @@ import os
 # Test sozlamalari app import qilinishidan oldin o'rnatiladi.
 os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("JWT_SECRET", "test-secret-" + "x" * 32)
+os.environ.setdefault("SIGNING_SECRET", "test-signing-secret-" + "y" * 32)
 os.environ.setdefault("BCRYPT_ROUNDS", "4")  # testlar tez ishlashi uchun
 
 from collections.abc import AsyncIterator  # noqa: E402

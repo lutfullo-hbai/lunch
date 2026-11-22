@@ -31,6 +31,7 @@ jobs:
       ENVIRONMENT: test
       DATABASE_URL: postgresql+asyncpg://lunch:lunch@localhost:5432/lunch_test
       JWT_SECRET: ci-only-secret-not-used-anywhere-else-0123456789
+      SIGNING_SECRET: ci-only-signing-secret-not-used-anywhere-0123456789
 
     steps:
       - uses: actions/checkout@v4
