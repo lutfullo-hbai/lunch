@@ -95,11 +95,16 @@ async def update_item(db: AsyncSession, item_id: int, data: MenuItemUpdate) -> M
 
 
 async def delete_item(db: AsyncSession, item_id: int) -> None:
-    """Soft delete: eski buyurtmalar ovqatga havolani yo'qotmasligi uchun."""
-    item = await get_item(db, item_id)
+    """Soft delete: eski buyurtmalar ovqatga havolani yo'qotmasligi uchun.
+
+    Rasm endi hech qayerda ko'rsatilmaydi, shuning uchun fayllari o'chiriladi."""
+    item = await _lock_item(db, item_id)
+    old_path = item.image_path
     item.deleted_at = datetime.now(UTC)
     item.is_available = False
+    item.image_path = None
     await db.commit()
+    images.delete_image(old_path)
 
 
 async def _lock_item(db: AsyncSession, item_id: int) -> MenuItem:
@@ -109,6 +114,8 @@ async def _lock_item(db: AsyncSession, item_id: int) -> MenuItem:
         select(MenuItem)
         .where(MenuItem.id == item_id, MenuItem.deleted_at.is_(None))
         .with_for_update()
+        # Sessiyada eski nusxa bo'lsa ham, qulfdan keyingi yangi qiymatlar o'qilsin.
+        .execution_options(populate_existing=True)
     )
     if item is None:
         raise menu_item_not_found()

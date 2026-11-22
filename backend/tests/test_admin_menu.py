@@ -130,6 +130,16 @@ async def test_soft_delete(client, admin, category, db):
     row = await db.get(MenuItem, item["id"])
     assert row is not None and row.deleted_at is not None  # bazada qoladi
 
+
+async def test_soft_delete_removes_image_files(client, admin, category, media_dir):
+    item = await create_item(client, admin, category)
+    assert (await upload(client, admin, item["id"], png_bytes())).status_code == 200
+    assert len(list(media_dir.rglob("*.webp"))) == 2
+
+    await signed_request(client, admin, "DELETE", f"/admin/menu/{item['id']}")
+
+    assert list(media_dir.rglob("*.webp")) == []
+
     # Kategoriyada faol ovqat qolmadi, endi o'chirsa bo'ladi.
     deleted = await signed_request(client, admin, "DELETE", f"/admin/categories/{category['id']}")
     assert deleted.status_code == 204
