@@ -87,6 +87,7 @@ Hammasi login va imzo talab qiladi.
 Buyurtma javobi: `id`, `status`, `payment_method` (`cash` yoki `card`), `total_price`, `created_at`, `items` (`name`, `price`, `quantity`, `subtotal`), `can_cancel`.
 
 - **Narx** bazadan olinadi, mijoz yuborgan narx e'tiborga olinmaydi. Bir xil ovqat ikki qatorda kelsa, bitta qatorga qo'shiladi.
+- **Rate limit:** bitta user `ORDER_RATE_WINDOW_SECONDS` ichida ko'pi bilan `ORDER_RATE_LIMIT` ta buyurtma beradi (default soatiga 20), oshsa `429 TOO_MANY_REQUESTS`.
 - **Miqdor** kamida 1. Bitta buyurtmada ko'pi bilan `ORDER_MAX_LINES` xil ovqat.
 - **Sotuvda yo'q ovqat:** `409 ITEMS_UNAVAILABLE`, `details.menu_item_ids` da qaysilari. Savatni yangilab, qayta yuboring.
 - **Bekor qilish** faqat `new` holatida mumkin (`can_cancel`), aks holda `409 ORDER_NOT_CANCELLABLE`.

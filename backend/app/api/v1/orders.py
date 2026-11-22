@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, BackgroundTasks, status
 
-from app.api.deps import CurrentUser, DbSession, Sessions
+from app.api.deps import CurrentUser, DbSession, Sessions, user_rate_limit
 from app.schemas.common import Page, Pagination
 from app.schemas.order import MyOrderOut, OrderCreate
 from app.schemas.types import Id
@@ -11,7 +11,7 @@ from app.services import order_notify, user_orders
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[user_rate_limit("order")])
 async def create_order(
     data: OrderCreate,
     user: CurrentUser,

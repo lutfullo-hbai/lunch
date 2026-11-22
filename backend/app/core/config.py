@@ -63,6 +63,9 @@ class Settings(BaseSettings):
     login_rate_window_seconds: int = Field(default=60, ge=1)
     register_rate_limit: int = Field(default=5, ge=1)
     register_rate_window_seconds: int = Field(default=3600, ge=1)
+    # Buyurtma user bo'yicha cheklanadi: guruh spam bo'lib ketmasin.
+    order_rate_limit: int = Field(default=20, ge=1)
+    order_rate_window_seconds: int = Field(default=3600, ge=1)
 
     # --- Rasmlar ---
     media_dir: Path = Path("media")

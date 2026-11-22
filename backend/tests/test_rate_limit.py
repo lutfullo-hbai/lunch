@@ -62,3 +62,24 @@ def test_short_window_sweep_keeps_long_windows(monkeypatch):
     now[0] += 61
     limiter.hit("login:ip", limit=10, window_seconds=60)  # sweep'ni ishga tushiradi
     assert limiter.hit("register:ip", limit=1, window_seconds=3600) is not None
+
+
+async def test_orders_are_limited_per_user(client, db, monkeypatch):
+    from tests.helpers import admin_tokens, register, signed_request
+    from tests.test_menu import make_category, make_item
+
+    monkeypatch.setattr(get_settings(), "order_rate_limit", 2)
+    admin = await admin_tokens(client, db)
+    item = await make_item(client, admin, await make_category(client, admin, "Osh"), "Choy")
+    payload = {"items": [{"menu_item_id": item["id"], "quantity": 1}], "payment_method": "cash"}
+
+    ali = await register(client, email="ali@example.com")
+    codes = [
+        (await signed_request(client, ali, "POST", "/orders", payload)).status_code
+        for _ in range(3)
+    ]
+    assert codes == [201, 201, 429]
+
+    # Boshqa user (o'sha IP'dan bo'lsa ham) cheklanmaydi.
+    vali = await register(client, email="vali@example.com")
+    assert (await signed_request(client, vali, "POST", "/orders", payload)).status_code == 201

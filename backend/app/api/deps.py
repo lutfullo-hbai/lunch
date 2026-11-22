@@ -37,21 +37,24 @@ def get_nonce_store(request: Request) -> NonceStore:
     return request.app.state.nonce_store
 
 
+def _check_rate(request: Request, action: str, subject: str) -> None:
+    """Chegara `.env` dagi `<ACTION>_RATE_LIMIT` va `<ACTION>_RATE_WINDOW_SECONDS` dan olinadi."""
+    settings = get_settings()
+    limiter: RateLimiter = request.app.state.rate_limiter
+    retry_after = limiter.hit(
+        f"{action}:{subject}",
+        limit=getattr(settings, f"{action}_rate_limit"),
+        window_seconds=getattr(settings, f"{action}_rate_window_seconds"),
+    )
+    if retry_after is not None:
+        raise too_many_requests(retry_after)
+
+
 def rate_limit(action: str):
-    """IP bo'yicha rate limit dependency. Chegara `.env` dagi `<ACTION>_RATE_LIMIT` va
-    `<ACTION>_RATE_WINDOW_SECONDS` dan olinadi."""
+    """IP bo'yicha rate limit (login qilmagan so'rovlar uchun)."""
 
     async def check(request: Request) -> None:
-        settings = get_settings()
-        limiter: RateLimiter = request.app.state.rate_limiter
-        client_ip = request.client.host if request.client else "unknown"
-        retry_after = limiter.hit(
-            f"{action}:{client_ip}",
-            limit=getattr(settings, f"{action}_rate_limit"),
-            window_seconds=getattr(settings, f"{action}_rate_window_seconds"),
-        )
-        if retry_after is not None:
-            raise too_many_requests(retry_after)
+        _check_rate(request, action, request.client.host if request.client else "unknown")
 
     return Depends(check)
 
@@ -132,6 +135,15 @@ async def get_current_user(auth: Auth) -> User:
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def user_rate_limit(action: str):
+    """User bo'yicha rate limit: bir tarmoqdagi (bitta IP) xodimlar bir-biriga xalaqit bermaydi."""
+
+    async def check(request: Request, user: CurrentUser) -> None:
+        _check_rate(request, action, f"user-{user.id}")
+
+    return Depends(check)
 
 
 async def require_admin(user: CurrentUser) -> User:
