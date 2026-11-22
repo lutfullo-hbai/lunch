@@ -21,6 +21,15 @@ class CategoryUpdate(PatchModel):
     is_active: bool | None = None
 
 
+class CategoryPublicOut(BaseModel):
+    """User ko'radigan kategoriya."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+
+
 class CategoryOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
