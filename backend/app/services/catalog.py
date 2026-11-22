@@ -45,3 +45,8 @@ async def get_item(db: AsyncSession, item_id: int) -> MenuItem:
         raise menu_item_not_found()
     return item
 
+
+async def get_items_by_ids(db: AsyncSession, item_ids: set[int]) -> dict[int, MenuItem]:
+    """Buyurtma uchun: so'ralganlardan buyurtma qilish mumkin bo'lgan ovqatlar."""
+    rows = await db.scalars(_orderable_items().where(MenuItem.id.in_(item_ids)))
+    return {item.id: item for item in rows}

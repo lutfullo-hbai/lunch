@@ -73,6 +73,10 @@ class Settings(BaseSettings):
     image_thumb_size: int = Field(default=400, ge=50)
     image_quality: int = Field(default=85, ge=1, le=100)
 
+    # --- Buyurtma ---
+    # Bitta buyurtmadagi har xil ovqatlar soni (juda katta so'rovdan himoya).
+    order_max_lines: int = Field(default=50, ge=1)
+
     # --- Sahifalash ---
     page_size_default: int = Field(default=20, ge=1)
     page_size_max: int = Field(default=100, ge=1)

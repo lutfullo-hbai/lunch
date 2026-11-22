@@ -134,6 +134,15 @@ def image_too_large(max_mb: int) -> AppError:
     )
 
 
+def items_unavailable(item_ids: list[int]) -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "ITEMS_UNAVAILABLE",
+        "Ba'zi ovqatlar topilmadi yoki hozir sotuvda yo'q",
+        details={"menu_item_ids": item_ids},
+    )
+
+
 def order_not_found() -> AppError:
     return AppError(status.HTTP_404_NOT_FOUND, "ORDER_NOT_FOUND", "Buyurtma topilmadi")
 
