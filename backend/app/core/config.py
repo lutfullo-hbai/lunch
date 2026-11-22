@@ -50,10 +50,10 @@ class Settings(BaseSettings):
     bcrypt_rounds: int = Field(default=12, ge=4, le=16)
     password_min_length: int = Field(default=8, ge=6)
 
-    # Yaroqli access token bilan kelgan so'rov tanasining maksimal hajmi (rasm yuklash ham).
-    max_request_mb: int = Field(default=6, ge=1)
-    # Tokensiz so'rovlar (login, register, refresh) kichik JSON, katta body kerak emas.
-    max_anonymous_request_kb: int = Field(default=64, ge=1)
+    # Oddiy so'rovlar kichik JSON, katta body kerak emas.
+    max_request_kb: int = Field(default=64, ge=1)
+    # Rasm yuklash so'rovining maksimal hajmi (faqat yaroqli access token bilan).
+    max_upload_mb: int = Field(default=6, ge=1)
 
     # --- Rate limit (IP bo'yicha): oynada ruxsat etilgan urinishlar soni ---
     login_rate_limit: int = Field(default=10, ge=1)

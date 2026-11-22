@@ -1,46 +1,54 @@
 """So'rov tanasi (body) hajmini cheklaydigan va uni oldindan o'qib saqlaydigan ASGI middleware.
 
-- Har bir so'rovga chegara qo'yiladi. Katta chegara (MAX_REQUEST_MB, rasm yuklash)
-  faqat yaroqli access token bilan kelgan so'rovga beriladi, qolganlariga (login,
-  register, refresh) MAX_ANONYMOUS_REQUEST_KB. Imzo body'siz tekshirilmaydi, shuning
-  uchun bu yerda faqat token (JWT imzosi va muddati) tekshiriladi: soxta
-  `X-Signature` sarlavhasi katta chegarani bermaydi. Chegara ilova body'ni
-  o'qishidan oldin tekshiriladi, katta so'rov oxirigacha o'qilmaydi.
+- Hamma so'rovlar kichik JSON: ularga MAX_REQUEST_KB chegarasi qo'yiladi.
+- Katta chegara (MAX_UPLOAD_MB) faqat fayl yuklash yo'llariga (`upload_routes`) va faqat
+  yaroqli access token bilan beriladi. Tokenning JWT imzosi va muddati shu yerda
+  tekshiriladi (bazaga murojaat yo'q). Token bor-u yaroqsiz bo'lsa, body o'qilmasdan
+  401 INVALID_TOKEN qaytadi: mijoz "fayl katta" deb emas, "token eskirgan" deb
+  tushunib, tokenni yangilaydi.
+- Chegara body o'qilishidan oldin tekshiriladi, katta so'rov oxirigacha o'qilmaydi.
 - Body `scope["state"]` ga saqlanadi: FastAPI multipart'ni dependency'lardan oldin
   o'qib yuboradi, imzo tekshiruvi esa aynan shu baytlarni ishlatadi.
 """
 
 import json
+import re
+from collections.abc import Iterable
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app.core.errors import error_body
+from app.core.errors import AppError, error_body, unauthorized
 from app.core.security import decode_access_token
 
 RAW_BODY_STATE_KEY = "raw_body"
 _BEARER_PREFIX = b"bearer "
 
 
-def _has_valid_access_token(headers: dict[bytes, bytes]) -> bool:
+def _bearer_token(headers: dict[bytes, bytes]) -> str | None:
     authorization = headers.get(b"authorization", b"")
     if not authorization.lower().startswith(_BEARER_PREFIX):
-        return False
-    token = authorization[len(_BEARER_PREFIX) :].decode("latin-1").strip()
-    return decode_access_token(token) is not None
+        return None
+    return authorization[len(_BEARER_PREFIX) :].decode("latin-1").strip()
 
 
 class BodyLimitMiddleware:
     def __init__(
-        self, app: ASGIApp, authenticated_max_bytes: int, anonymous_max_bytes: int
+        self,
+        app: ASGIApp,
+        max_bytes: int,
+        upload_max_bytes: int,
+        upload_routes: Iterable[tuple[str, re.Pattern[str]]],
     ) -> None:
         self.app = app
-        self.authenticated_max_bytes = authenticated_max_bytes
-        self.anonymous_max_bytes = anonymous_max_bytes
+        self.max_bytes = max_bytes
+        self.upload_max_bytes = upload_max_bytes
+        self.upload_routes = list(upload_routes)
 
-    def _limit(self, headers: dict[bytes, bytes]) -> int:
-        if _has_valid_access_token(headers):
-            return self.authenticated_max_bytes
-        return self.anonymous_max_bytes
+    def _is_upload(self, scope: Scope) -> bool:
+        return any(
+            scope["method"] == method and pattern.fullmatch(scope["path"])
+            for method, pattern in self.upload_routes
+        )
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -48,12 +56,22 @@ class BodyLimitMiddleware:
             return
 
         headers = dict(scope["headers"])
-        limit = self._limit(headers)
+        limit = self.max_bytes
+        if self._is_upload(scope):
+            token = _bearer_token(headers)
+            if token is not None:
+                if decode_access_token(token) is None:
+                    await _send_error(
+                        send,
+                        unauthorized("INVALID_TOKEN", "Access token yaroqsiz yoki muddati o'tgan"),
+                    )
+                    return
+                limit = self.upload_max_bytes
 
         # Mijoz hajmni oldindan aytgan bo'lsa, birorta bayt o'qimasdan rad etamiz.
         declared = headers.get(b"content-length")
         if declared is not None and declared.isdigit() and int(declared) > limit:
-            await _reject_too_large(send)
+            await _send_error(send, _too_large())
             return
 
         chunks: list[bytes] = []
@@ -66,7 +84,7 @@ class BodyLimitMiddleware:
             chunk = message.get("body", b"")
             size += len(chunk)
             if size > limit:  # Content-Length yo'q yoki yolg'on bo'lsa
-                await _reject_too_large(send)
+                await _send_error(send, _too_large())
                 return
             chunks.append(chunk)
             more_body = message.get("more_body", False)
@@ -86,19 +104,21 @@ class BodyLimitMiddleware:
         await self.app(scope, replay, send)
 
 
-async def _reject_too_large(send: Send) -> None:
+def _too_large() -> AppError:
+    return AppError(413, "REQUEST_TOO_LARGE", "So'rov hajmi juda katta")
+
+
+async def _send_error(send: Send, error: AppError) -> None:
+    """Javob ilovaga yetmasdan yuboriladi, shuning uchun ulanish yopiladi
+    (o'qilmagan body keyingi so'rovga aralashmasin)."""
     content = json.dumps(
-        error_body("REQUEST_TOO_LARGE", "So'rov hajmi juda katta"), ensure_ascii=False
+        error_body(error.code, error.message, error.details), ensure_ascii=False
     ).encode()
-    await send(
-        {
-            "type": "http.response.start",
-            "status": 413,
-            "headers": [
-                (b"content-type", b"application/json"),
-                (b"content-length", str(len(content)).encode()),
-                (b"connection", b"close"),
-            ],
-        }
-    )
+    headers = [
+        (b"content-type", b"application/json"),
+        (b"content-length", str(len(content)).encode()),
+        (b"connection", b"close"),
+        *((k.lower().encode(), v.encode()) for k, v in (error.headers or {}).items()),
+    ]
+    await send({"type": "http.response.start", "status": error.status_code, "headers": headers})
     await send({"type": "http.response.body", "body": content})

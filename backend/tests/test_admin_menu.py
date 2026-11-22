@@ -197,7 +197,7 @@ async def test_request_body_limit(client, db, admin, category, monkeypatch):
     from app.db.session import get_db
     from app.main import create_app
 
-    monkeypatch.setattr(get_settings(), "max_request_mb", 1)
+    monkeypatch.setattr(get_settings(), "max_upload_mb", 1)
     small_app = create_app()
     small_app.dependency_overrides[get_db] = lambda: db
     async with AsyncClient(transport=ASGITransport(app=small_app), base_url="http://test") as c:

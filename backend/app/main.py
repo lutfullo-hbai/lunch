@@ -1,4 +1,5 @@
 import mimetypes
+import re
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -37,8 +38,12 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(
         BodyLimitMiddleware,
-        authenticated_max_bytes=settings.max_request_mb * 1024 * 1024,
-        anonymous_max_bytes=settings.max_anonymous_request_kb * 1024,
+        max_bytes=settings.max_request_kb * 1024,
+        upload_max_bytes=settings.max_upload_mb * 1024 * 1024,
+        # Katta body faqat shu yo'llarga kerak (admin/menu.py dagi rasm yuklash).
+        upload_routes=[
+            ("PUT", re.compile(rf"{re.escape(settings.api_prefix)}/admin/menu/\d+/image"))
+        ],
     )
     app.add_middleware(
         CORSMiddleware,
