@@ -6,7 +6,7 @@ from app.api.deps import DbSession
 from app.models.enums import UserRole
 from app.schemas.common import Page, Pagination
 from app.schemas.order import OrderOut
-from app.schemas.types import Id
+from app.schemas.types import Id, Text
 from app.schemas.user import AdminUserOut, UserStatusUpdate
 from app.services import orders as orders_service
 from app.services import users as service
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/users", tags=["admin: users"])
 async def list_users(
     db: DbSession,
     page: Pagination,
-    search: Annotated[str | None, Query(max_length=100)] = None,
+    search: Annotated[Text | None, Query(max_length=100)] = None,
     role: UserRole | None = None,
     is_active: bool | None = None,
 ) -> Page[AdminUserOut]:

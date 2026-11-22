@@ -88,3 +88,47 @@ async def test_category_patch_null_is_422(client, admin, category, field):
         client, admin, "PATCH", f"/admin/categories/{category['id']}", {field: None}
     )
     assert_validation_error(response, field)
+
+
+NUL = "a\u0000b"
+
+
+async def test_register_with_nul_is_422(client):
+    from app.core.config import get_settings
+
+    response = await client.post(
+        f"{get_settings().api_prefix}/auth/register",
+        json={"full_name": NUL, "email": "nul@example.com", "password": "secret-pass"},
+    )
+    assert_validation_error(response, "full_name")
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "payload", "field"),
+    [
+        ("GET", "/admin/users?search=%00", None, "search"),
+        ("GET", "/admin/menu?search=%00", None, "search"),
+        ("POST", "/admin/categories", {"name": NUL}, "name"),
+    ],
+)
+async def test_admin_nul_is_422(client, admin, method, path, payload, field):
+    response = await signed_request(client, admin, method, path, payload)
+    assert_validation_error(response, field)
+
+
+@pytest.mark.parametrize("field", ["name", "description", "portion"])
+async def test_menu_text_with_nul_is_422(client, admin, item, field):
+    response = await signed_request(
+        client, admin, "PATCH", f"/admin/menu/{item['id']}", {field: NUL}
+    )
+    assert_validation_error(response, field)
+
+
+async def test_login_email_with_nul_is_422(client):
+    from app.core.config import get_settings
+
+    response = await client.post(
+        f"{get_settings().api_prefix}/auth/login",
+        json={"email": "a\u0000@example.com", "password": "secret-pass"},
+    )
+    assert_validation_error(response, "email")

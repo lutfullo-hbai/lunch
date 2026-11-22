@@ -4,6 +4,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, fie
 
 from app.core.config import check_bcrypt_length, get_settings
 from app.models.enums import UserRole
+from app.schemas.types import Text
 
 # Email har doim kichik harfda: Ali@x.uz va ali@x.uz bitta akkaunt.
 Email = Annotated[EmailStr, AfterValidator(str.lower)]
@@ -11,7 +12,7 @@ Password = Annotated[str, AfterValidator(check_bcrypt_length)]
 
 
 class RegisterIn(BaseModel):
-    full_name: str = Field(min_length=2, max_length=120)
+    full_name: Annotated[Text, Field(min_length=2, max_length=120)]
     email: Email
     password: Password
 

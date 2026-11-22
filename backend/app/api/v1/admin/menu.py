@@ -5,7 +5,7 @@ from fastapi import APIRouter, File, Query, UploadFile, status
 from app.api.deps import DbSession
 from app.schemas.common import Page, Pagination
 from app.schemas.menu import MenuItemCreate, MenuItemOut, MenuItemUpdate
-from app.schemas.types import Id
+from app.schemas.types import Id, Text
 from app.services import menu as service
 
 router = APIRouter(prefix="/menu", tags=["admin: menu"])
@@ -16,7 +16,7 @@ async def list_items(
     db: DbSession,
     page: Pagination,
     category_id: Id | None = None,
-    search: Annotated[str | None, Query(max_length=100)] = None,
+    search: Annotated[Text | None, Query(max_length=100)] = None,
     is_available: bool | None = None,
 ) -> Page[MenuItemOut]:
     result = await service.list_items(db, page, category_id, search, is_available)

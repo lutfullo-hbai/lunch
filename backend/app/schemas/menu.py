@@ -4,17 +4,19 @@ from typing import Annotated
 from pydantic import AliasPath, BaseModel, ConfigDict, Field, StringConstraints, computed_field
 
 from app.core.media import public_url, thumb_path
-from app.schemas.types import Id, PatchModel
+from app.schemas.types import Id, NoNul, PatchModel, Text
 
-ItemName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=150)]
-Portion = Annotated[str, StringConstraints(strip_whitespace=True, max_length=50)]
+ItemName = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=150), NoNul
+]
+Portion = Annotated[str, StringConstraints(strip_whitespace=True, max_length=50), NoNul]
 Price = Annotated[Decimal, Field(gt=0, max_digits=12, decimal_places=2)]
 
 
 class MenuItemCreate(BaseModel):
     category_id: Id
     name: ItemName
-    description: str | None = None
+    description: Text | None = None
     price: Price
     portion: Portion | None = None
     is_available: bool = True
@@ -25,7 +27,7 @@ class MenuItemUpdate(PatchModel):
 
     category_id: Id | None = None
     name: ItemName | None = None
-    description: str | None = None
+    description: Text | None = None
     price: Price | None = None
     portion: Portion | None = None
     is_available: bool | None = None

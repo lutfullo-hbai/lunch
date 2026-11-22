@@ -2,10 +2,10 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
-from app.schemas.types import Int32, PatchModel
+from app.schemas.types import Int32, NoNul, PatchModel
 
 CategoryName = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100), NoNul
 ]
 
 
