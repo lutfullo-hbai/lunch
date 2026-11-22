@@ -115,3 +115,28 @@ async def test_new_order_visible_to_admin_as_pending(client, admin, user, menu):
     detail = (await signed_request(client, admin, "GET", f"/admin/orders/{created['id']}")).json()
     assert detail["notify_status"] == "pending"
     assert detail["user"]["email"] == "user@example.com"
+
+
+async def test_my_orders_newest_first_and_only_mine(client, user, menu):
+    first = (await order(client, user, [line(menu["palov"])])).json()
+    second = (await order(client, user, [line(menu["choy"])])).json()
+    other = await register(client, email="other@example.com")
+    await order(client, other, [line(menu["choy"])])
+
+    body = (await signed_request(client, user, "GET", "/orders/me")).json()
+    assert body["total"] == 2
+    assert [o["id"] for o in body["items"]] == [second["id"], first["id"]]
+
+
+async def test_my_order_detail(client, user, menu):
+    created = (await order(client, user, [line(menu["palov"], 2)])).json()
+    body = (await signed_request(client, user, "GET", f"/orders/me/{created['id']}")).json()
+    assert body["items"][0]["subtotal"] == "90000.00"
+
+
+async def test_someone_elses_order_is_404(client, user, menu):
+    other = await register(client, email="other@example.com")
+    created = (await order(client, other, [line(menu["choy"])])).json()
+    response = await signed_request(client, user, "GET", f"/orders/me/{created['id']}")
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "ORDER_NOT_FOUND"

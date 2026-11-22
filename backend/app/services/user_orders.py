@@ -1,4 +1,4 @@
-"""User buyurtmalari: yaratish."""
+"""User buyurtmalari: yaratish, ro'yxat va tafsilot."""
 
 from collections import Counter
 from decimal import Decimal
@@ -8,13 +8,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.errors import items_unavailable, order_not_found, validation_error
+from app.db.query import PageResult, paginate
 from app.models import Order, OrderItem, User
+from app.schemas.common import PageParams
 from app.schemas.order import OrderCreate
 from app.services import catalog
 
 # Jami summa bazadagi ustunga sig'ishi kerak (NUMERIC(precision, scale)).
 _TOTAL_TYPE = Order.__table__.c.total_price.type
 MAX_TOTAL = Decimal(10) ** (_TOTAL_TYPE.precision - _TOTAL_TYPE.scale)
+
+
+async def list_orders(db: AsyncSession, user: User, page: PageParams) -> PageResult[Order]:
+    query = (
+        select(Order)
+        .where(Order.user_id == user.id)
+        .options(selectinload(Order.items))
+        .order_by(Order.created_at.desc(), Order.id.desc())
+    )
+    return await paginate(db, query, page.offset, page.size)
 
 
 async def get_order(db: AsyncSession, user: User, order_id: int) -> Order:
