@@ -5,6 +5,9 @@ os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("JWT_SECRET", "test-secret-" + "x" * 32)
 os.environ.setdefault("SIGNING_SECRET", "test-signing-secret-" + "y" * 32)
 os.environ.setdefault("BCRYPT_ROUNDS", "4")  # testlar tez ishlashi uchun
+# Testlar bitta IP'dan ko'p login/register qiladi. Limit alohida testda tekshiriladi.
+os.environ.setdefault("LOGIN_RATE_LIMIT", "100000")
+os.environ.setdefault("REGISTER_RATE_LIMIT", "100000")
 
 from collections.abc import AsyncIterator  # noqa: E402
 

@@ -41,6 +41,8 @@ Tokenlar javobi: `access_token`, `refresh_token`, `expires_in` (soniya), `signin
 - Bir vaqtda faqat bitta refresh so'rovi yuboring: tablar orasida umumiy, "single-flight". Agar `REFRESH_TOKEN_ROTATED` kelsa, token boshqa so'rovda allaqachon yangilangan bo'ladi. Saqlangan eng oxirgi tokenni oling va so'rovni qaytaring.
 - Eski token `REFRESH_REUSE_GRACE_SECONDS` dan keyin qayta ishlatilsa, o'g'irlangan deb hisoblanadi va userning barcha sessiyalari yopiladi.
 - `signing_key` ham har login/refresh'da yangilanadi.
+- Logout qilingan refresh token shunchaki `INVALID_REFRESH_TOKEN` oladi, boshqa sessiyalar yopilmaydi.
+- **Rate limit:** login va register IP bo'yicha cheklanadi (`LOGIN_RATE_*`, `REGISTER_RATE_*`). Oshib ketsa `429 TOO_MANY_REQUESTS` va `Retry-After` header keladi. IP proxy ortida `--proxy-headers` orqali olinadi, shuning uchun proxy manzili `FORWARDED_ALLOW_IPS` da bo'lishi kerak.
 
 ## So'rov imzosi
 

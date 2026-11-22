@@ -10,7 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.body_buffer import RAW_BODY_STATE_KEY
 from app.core.config import get_settings
-from app.core.errors import forbidden, unauthorized, user_inactive
+from app.core.errors import forbidden, too_many_requests, unauthorized, user_inactive
+from app.core.rate_limit import RateLimiter
 from app.core.security import decode_access_token, derive_signing_key
 from app.core.signature import (
     NONCE_HEADER,
@@ -33,6 +34,25 @@ _bearer = HTTPBearer(auto_error=False)
 
 def get_nonce_store(request: Request) -> NonceStore:
     return request.app.state.nonce_store
+
+
+def rate_limit(action: str):
+    """IP bo'yicha rate limit dependency. Chegara `.env` dagi `<ACTION>_RATE_LIMIT` va
+    `<ACTION>_RATE_WINDOW_SECONDS` dan olinadi."""
+
+    async def check(request: Request) -> None:
+        settings = get_settings()
+        limiter: RateLimiter = request.app.state.rate_limiter
+        client_ip = request.client.host if request.client else "unknown"
+        retry_after = limiter.hit(
+            f"{action}:{client_ip}",
+            limit=getattr(settings, f"{action}_rate_limit"),
+            window_seconds=getattr(settings, f"{action}_rate_window_seconds"),
+        )
+        if retry_after is not None:
+            raise too_many_requests(retry_after)
+
+    return Depends(check)
 
 
 @dataclass(frozen=True)

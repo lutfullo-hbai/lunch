@@ -55,6 +55,16 @@ def forbidden() -> AppError:
     return AppError(status.HTTP_403_FORBIDDEN, "FORBIDDEN", "Bu amal faqat admin uchun")
 
 
+def too_many_requests(retry_after: int) -> AppError:
+    return AppError(
+        status.HTTP_429_TOO_MANY_REQUESTS,
+        "TOO_MANY_REQUESTS",
+        "Urinishlar juda ko'p, birozdan keyin qayta urinib ko'ring",
+        details={"retry_after": retry_after},
+        headers={"Retry-After": str(retry_after)},
+    )
+
+
 def invalid_credentials() -> AppError:
     return AppError(
         status.HTTP_401_UNAUTHORIZED, "INVALID_CREDENTIALS", "Email yoki parol noto'g'ri"

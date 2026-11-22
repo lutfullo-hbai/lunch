@@ -1,18 +1,22 @@
 from fastapi import APIRouter, status
 
-from app.api.deps import Auth, CurrentUser, DbSession
+from app.api.deps import Auth, CurrentUser, DbSession, rate_limit
 from app.schemas.auth import LoginIn, RefreshIn, RegisterIn, TokenOut, UserOut
 from app.services import auth as auth_service
 
 router = APIRouter(tags=["auth"])
 
 
-@router.post("/auth/register", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/auth/register",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[rate_limit("register")],
+)
 async def register(data: RegisterIn, db: DbSession) -> TokenOut:
     return TokenOut.model_validate(await auth_service.register(db, data))
 
 
-@router.post("/auth/login")
+@router.post("/auth/login", dependencies=[rate_limit("login")])
 async def login(data: LoginIn, db: DbSession) -> TokenOut:
     return TokenOut.model_validate(await auth_service.login(db, data))
 

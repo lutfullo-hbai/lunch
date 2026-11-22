@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     # Imzosiz so'rovlar (login, register, refresh) kichik JSON, katta body kerak emas.
     max_unsigned_request_kb: int = Field(default=64, ge=1)
 
+    # --- Rate limit (IP bo'yicha): oynada ruxsat etilgan urinishlar soni ---
+    login_rate_limit: int = Field(default=10, ge=1)
+    login_rate_window_seconds: int = Field(default=60, ge=1)
+    register_rate_limit: int = Field(default=5, ge=1)
+    register_rate_window_seconds: int = Field(default=3600, ge=1)
+
     # --- Rasmlar ---
     media_dir: Path = Path("media")
     media_url_prefix: str = "/media"
