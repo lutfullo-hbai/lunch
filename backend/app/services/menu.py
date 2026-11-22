@@ -4,10 +4,11 @@ from datetime import UTC, datetime
 
 from fastapi import UploadFile
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.errors import menu_item_not_found, validation_error
+from app.core.errors import AppError, menu_item_not_found, validation_error
 from app.db.query import PageResult, contains, paginate
 from app.models import Category, MenuItem
 from app.schemas.common import PageParams
@@ -23,9 +24,24 @@ def _active_items():
     )
 
 
-async def _ensure_category_exists(db: AsyncSession, category_id: int) -> None:
-    if await db.get(Category, category_id) is None:
-        raise validation_error("category_id", "Kategoriya topilmadi")
+def _unknown_category() -> AppError:
+    return validation_error("category_id", "Kategoriya topilmadi")
+
+
+async def _lock_category(db: AsyncSession, category_id: int) -> None:
+    """Kategoriya borligini tekshiradi va uni commit'gacha o'chirilishdan qulflaydi
+    (FOR SHARE): parallel o'chirish ovqatni kategoriyasiz qoldirmasin."""
+    query = select(Category.id).where(Category.id == category_id).with_for_update(read=True)
+    if await db.scalar(query) is None:
+        raise _unknown_category()
+
+
+async def _commit(db: AsyncSession) -> None:
+    try:
+        await db.commit()
+    except IntegrityError as exc:  # FK: kategoriya baribir yo'qolib qolgan bo'lsa
+        await db.rollback()
+        raise _unknown_category() from exc
 
 
 async def list_items(
@@ -60,10 +76,10 @@ async def _reload(db: AsyncSession, item_id: int) -> MenuItem:
 
 
 async def create_item(db: AsyncSession, data: MenuItemCreate) -> MenuItem:
-    await _ensure_category_exists(db, data.category_id)
+    await _lock_category(db, data.category_id)
     item = MenuItem(**data.model_dump())
     db.add(item)
-    await db.commit()
+    await _commit(db)
     return await _reload(db, item.id)
 
 
@@ -71,10 +87,10 @@ async def update_item(db: AsyncSession, item_id: int, data: MenuItemUpdate) -> M
     item = await get_item(db, item_id)
     changes = data.model_dump(exclude_unset=True)
     if "category_id" in changes:
-        await _ensure_category_exists(db, changes["category_id"])
+        await _lock_category(db, changes["category_id"])
     for field, value in changes.items():
         setattr(item, field, value)
-    await db.commit()
+    await _commit(db)
     return await _reload(db, item_id)
 
 

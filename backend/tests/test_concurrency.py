@@ -131,3 +131,50 @@ async def test_parallel_status_changes_only_one_wins(live_client):
             await session.execute(delete(MenuItem).where(MenuItem.id == item_id))
             await session.execute(delete(Category).where(Category.id == category_id))
             await session.commit()
+
+
+async def test_category_delete_and_item_create_do_not_both_win(live_client):
+    from sqlalchemy import delete, select
+
+    from app.db.session import SessionFactory
+    from app.models import Category, MenuItem, User
+    from app.models.enums import UserRole
+
+    admin = await register(live_client, email=f"cat@{LIVE_EMAIL_DOMAIN}")
+    async with SessionFactory() as session:
+        user = await session.get(User, admin["user"]["id"])
+        user.role = UserRole.ADMIN
+        await session.commit()
+
+    item_ids: list[int] = []
+    try:
+        for attempt in range(10):
+            created = await signed_request(
+                live_client, admin, "POST", "/admin/categories", {"name": f"Race {attempt}"}
+            )
+            category_id = created.json()["id"]
+            deleted, item = await asyncio.gather(
+                signed_request(live_client, admin, "DELETE", f"/admin/categories/{category_id}"),
+                signed_request(
+                    live_client,
+                    admin,
+                    "POST",
+                    "/admin/menu",
+                    {"category_id": category_id, "name": "Osh", "price": "1"},
+                ),
+            )
+            if item.status_code == 201:
+                item_ids.append(item.json()["id"])
+            # Ikkalasidan faqat bittasi o'tadi: yo kategoriya o'chadi, yo ovqat qo'shiladi.
+            assert sorted([deleted.status_code, item.status_code]) in ([201, 409], [204, 422])
+
+        async with SessionFactory() as session:
+            orphans = await session.scalar(
+                select(MenuItem.id).where(MenuItem.id.in_(item_ids), MenuItem.category_id.is_(None))
+            )
+            assert orphans is None
+    finally:
+        async with SessionFactory() as session:
+            await session.execute(delete(MenuItem).where(MenuItem.id.in_(item_ids)))
+            await session.execute(delete(Category).where(Category.name.like("Race %")))
+            await session.commit()
