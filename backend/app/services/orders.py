@@ -1,9 +1,9 @@
 """Buyurtmalar: admin uchun ro'yxat, tafsilot va holatni o'zgartirish."""
 
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -11,7 +11,9 @@ from app.core.config import get_settings
 from app.core.errors import (
     invalid_status_transition,
     order_already_notified,
+    order_closed,
     order_not_found,
+    order_notify_in_progress,
     telegram_not_configured,
 )
 from app.db.query import PageResult, paginate
@@ -20,6 +22,9 @@ from app.models.enums import NotifyStatus, OrderStatus, PaymentMethod
 from app.models.order import STATUS_TRANSITIONS
 from app.schemas.common import PageParams
 from app.services import telegram
+
+# Bu holatdagi buyurtma haqida guruhga "yangi buyurtma" qayta yuborilmaydi.
+CLOSED_STATUSES = (OrderStatus.CANCELLED, OrderStatus.DELIVERED)
 
 
 @dataclass(frozen=True)
@@ -85,22 +90,34 @@ async def set_status(db: AsyncSession, order_id: int, new_status: OrderStatus) -
 
 
 async def prepare_resend(db: AsyncSession, order_id: int) -> Order:
-    """Guruhga yuborilmagan (failed yoki pending) buyurtmani qayta yuborishga tayyorlaydi.
+    """Guruhga yetib bormagan buyurtmani qayta yuborish uchun "egallaydi".
 
-    Yuborishning o'zi fonda bo'ladi; holat `pending` ga qaytadi va natija bilan yangilanadi.
+    Bitta shartli UPDATE: ikki admin (yoki ikki marta bosish) bir vaqtda kelsa, faqat
+    bittasi o'tadi, shuning uchun guruhga bitta xabar boradi. `pending` (hozir
+    yuborilayotgan) buyurtma faqat `NOTIFY_STALE_SECONDS` dan keyin qayta olinadi.
+    Yuborishning o'zi fonda; natija `sent` yoki `failed` bo'ladi.
     """
     if not telegram.is_configured():
         raise telegram_not_configured()
-    order = await db.scalar(
-        _base_query()
-        .where(Order.id == order_id)
-        .with_for_update(of=Order)
-        .execution_options(populate_existing=True)
+    stale_before = datetime.now(UTC) - timedelta(seconds=get_settings().notify_stale_seconds)
+    claimed = await db.scalar(
+        update(Order)
+        .where(
+            Order.id == order_id,
+            Order.status.not_in(CLOSED_STATUSES),
+            (Order.notify_status == NotifyStatus.FAILED)
+            | ((Order.notify_status == NotifyStatus.PENDING) & (Order.updated_at < stale_before)),
+        )
+        .values(notify_status=NotifyStatus.PENDING, updated_at=func.now())
+        .returning(Order.id)
     )
-    if order is None:
-        raise order_not_found()
-    if order.notify_status is NotifyStatus.SENT:
-        raise order_already_notified()
-    order.notify_status = NotifyStatus.PENDING
     await db.commit()
+    if claimed is None:
+        order = await get_order(db, order_id)  # yo'q bo'lsa 404
+        if order.notify_status is NotifyStatus.SENT:
+            raise order_already_notified()
+        if order.status in CLOSED_STATUSES:
+            raise order_closed()
+        raise order_notify_in_progress()
+    db.expire_all()
     return await get_order(db, order_id)

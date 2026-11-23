@@ -158,6 +158,22 @@ def order_already_notified() -> AppError:
     )
 
 
+def order_notify_in_progress() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "ORDER_NOTIFY_IN_PROGRESS",
+        "Buyurtma hozir guruhga yuborilmoqda, birozdan keyin qayta urinib ko'ring",
+    )
+
+
+def order_closed() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "ORDER_CLOSED",
+        "Bekor qilingan yoki yetkazilgan buyurtma guruhga qayta yuborilmaydi",
+    )
+
+
 def telegram_not_configured() -> AppError:
     return AppError(
         status.HTTP_503_SERVICE_UNAVAILABLE,

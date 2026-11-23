@@ -95,6 +95,9 @@ class Settings(BaseSettings):
     telegram_timeout_seconds: float = Field(default=10, gt=0)
     # Yuborilmasa, shuncha soniyadan keyin qayta uriniladi; hammasi tugasa `failed`.
     notify_retry_delays: list[float] = [2, 4, 8]
+    # Shuncha vaqt `pending` qolgan xabar "osilib qolgan" deb hisoblanadi (masalan server
+    # qayta ishga tushgan) va uni qayta yuborish mumkin. Barcha urinishlardan uzun bo'lsin.
+    notify_stale_seconds: int = Field(default=120, ge=1)
 
     # --- Sahifalash ---
     page_size_default: int = Field(default=20, ge=1)

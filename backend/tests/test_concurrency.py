@@ -270,3 +270,67 @@ async def test_user_cancel_and_admin_accept_only_one_wins(live_client):
             await session.execute(delete(MenuItem).where(MenuItem.id == item_id))
             await session.execute(delete(Category).where(Category.id == category_id))
             await session.commit()
+
+
+async def test_parallel_resend_sends_one_message(live_client, monkeypatch):
+    """Admin "qayta yuborish"ni ikki marta bossa ham guruhga bitta xabar boradi."""
+    import json
+    from decimal import Decimal
+
+    import httpx
+    from pydantic import SecretStr
+    from sqlalchemy import delete
+
+    from app.db.session import SessionFactory
+    from app.models import Category, MenuItem, Order, OrderItem, User
+    from app.models.enums import NotifyStatus, PaymentMethod, UserRole
+    from app.services import telegram
+
+    sent: list[dict] = []
+
+    async def slow_telegram(request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(0.3)  # sekin Telegram: ikkinchi bosish birinchisi tugamasdan keladi
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json={"ok": True, "result": {}})
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "bot_token", SecretStr("1:test"))
+    monkeypatch.setattr(settings, "orders_group_chat_id", -100)
+    monkeypatch.setattr(telegram, "transport", httpx.MockTransport(slow_telegram))
+
+    admin = await register(live_client, email=f"resend@{LIVE_EMAIL_DOMAIN}")
+    async with SessionFactory() as session:
+        user = await session.get(User, admin["user"]["id"])
+        user.role = UserRole.ADMIN
+        item = MenuItem(category=Category(name=f"Resend {user.id}"), name="Osh", price=Decimal("1"))
+        order = Order(
+            user_id=user.id,
+            total_price=Decimal("1"),
+            payment_method=PaymentMethod.CASH,
+            notify_status=NotifyStatus.FAILED,
+            items=[
+                OrderItem(
+                    menu_item=item, name_snapshot="Osh", price_snapshot=Decimal("1"), quantity=1
+                )
+            ],
+        )
+        session.add(order)
+        await session.commit()
+        order_id, item_id, category_id = order.id, item.id, item.category_id
+
+    try:
+        path = f"/admin/orders/{order_id}/notify"
+        responses = await asyncio.gather(
+            signed_request(live_client, admin, "POST", path),
+            signed_request(live_client, admin, "POST", path),
+        )
+        assert sorted(r.status_code for r in responses) == [202, 409]
+        refused = next(r for r in responses if r.status_code == 409)
+        assert refused.json()["error"]["code"] == "ORDER_NOTIFY_IN_PROGRESS"
+        assert len(sent) == 1
+    finally:
+        async with SessionFactory() as session:
+            await session.execute(delete(Order).where(Order.id == order_id))
+            await session.execute(delete(MenuItem).where(MenuItem.id == item_id))
+            await session.execute(delete(Category).where(Category.id == category_id))
+            await session.commit()

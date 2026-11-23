@@ -203,3 +203,49 @@ def test_long_order_fits_telegram_limit():
     assert len(text) <= telegram.MAX_MESSAGE_LENGTH
     assert "va yana" in text
     assert "Jami:" in text
+
+
+async def set_order(db, order_id: int, **values) -> None:
+    from sqlalchemy import update
+
+    from app.models import Order
+
+    await db.execute(update(Order).where(Order.id == order_id).values(**values))
+    await db.commit()
+
+
+async def test_resend_while_sending_is_409(client, admin, user, menu, configure, db):
+    configure(FakeTelegram())
+    order = await place_order(client, user, menu)
+    await set_order(db, order["id"], notify_status="pending")  # hozir yuborilmoqda
+
+    response = await signed_request(client, admin, "POST", f"/admin/orders/{order['id']}/notify")
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "ORDER_NOTIFY_IN_PROGRESS"
+
+
+async def test_stale_pending_can_be_resent(client, admin, user, menu, configure, db):
+    from datetime import UTC, datetime, timedelta
+
+    fake = configure(FakeTelegram())
+    order = await place_order(client, user, menu)
+    long_ago = datetime.now(UTC) - timedelta(seconds=get_settings().notify_stale_seconds + 60)
+    await set_order(db, order["id"], notify_status="pending", updated_at=long_ago)
+
+    response = await signed_request(client, admin, "POST", f"/admin/orders/{order['id']}/notify")
+    assert response.status_code == 202
+    assert await notify_status(client, admin, order["id"]) == "sent"
+    assert len(fake.sent) == 2  # yaratilganda + qayta yuborilganda
+
+
+@pytest.mark.parametrize("status", ["cancelled", "delivered"])
+async def test_closed_order_is_not_resent(client, admin, user, menu, configure, db, status):
+    fake = configure(FakeTelegram(fail_times=100))
+    order = await place_order(client, user, menu)
+    await set_order(db, order["id"], status=status)
+    fake.fail_times = 0
+
+    response = await signed_request(client, admin, "POST", f"/admin/orders/{order['id']}/notify")
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "ORDER_CLOSED"
+    assert fake.sent == []
