@@ -66,7 +66,10 @@ def new_order_text(order: Order) -> str:
         hidden += 1
 
 
-def cancelled_order_text(order: Order) -> str:
+def cancelled_order_text(order: Order) -> str | None:
+    """Guruh bu buyurtmani ko'rmagan bo'lsa (xabar yetib bormagan), bekor xabari ham kerak emas."""
+    if order.notify_status is not NotifyStatus.SENT:
+        return None
     return "\n".join(
         [
             f"❌ <b>Buyurtma #{order.id} bekor qilindi</b> (user tomonidan)",
@@ -86,8 +89,18 @@ async def _load(db: AsyncSession, order_id: int) -> Order | None:
     )
 
 
+# 429 da Telegram so'ragan kutish shundan oshsa ham, shuncha kutamiz: fon vazifasi
+# cheksiz osilib qolmasin (keyingi urinish yoki admin qayta yuborishi bor).
+MAX_RETRY_AFTER_SECONDS = 30
+
+
+async def _wait(seconds: float) -> None:
+    """Qayta urinishdan oldin kutish (testlarda almashtiriladi)."""
+    await asyncio.sleep(seconds)
+
+
 async def _send_with_retry(text: str, order_id: int) -> bool:
-    """Yuborildi: True. Barcha urinishlar muvaffaqiyatsiz: False."""
+    """Yuborildi: True. Urinishlar tugadi yoki xato doimiy: False."""
     delays = get_settings().notify_retry_delays
     for attempt in range(len(delays) + 1):
         try:
@@ -95,8 +108,12 @@ async def _send_with_retry(text: str, order_id: int) -> bool:
             return True
         except telegram.TelegramError as exc:
             logger.warning("Buyurtma #%s xabari yuborilmadi (%s): %s", order_id, attempt + 1, exc)
-            if attempt < len(delays):
-                await asyncio.sleep(delays[attempt])
+            if not exc.retryable or attempt == len(delays):
+                return False
+            wait = delays[attempt]
+            if exc.retry_after is not None:
+                wait = min(max(exc.retry_after, wait), MAX_RETRY_AFTER_SECONDS)
+            await _wait(wait)
     return False
 
 

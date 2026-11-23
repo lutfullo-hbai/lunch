@@ -249,3 +249,46 @@ async def test_closed_order_is_not_resent(client, admin, user, menu, configure, 
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "ORDER_CLOSED"
     assert fake.sent == []
+
+
+async def test_no_cancel_message_if_group_never_saw_the_order(client, user, menu, configure):
+    fake = configure(FakeTelegram(fail_times=100))  # yangi buyurtma xabari yetib bormaydi
+    order = await place_order(client, user, menu)
+    calls_before = fake.calls
+
+    await signed_request(client, user, "POST", f"/orders/me/{order['id']}/cancel")
+    assert fake.calls == calls_before  # bekor xabari yuborishga ham urinilmadi
+
+
+class StatusTelegram(FakeTelegram):
+    """Belgilangan HTTP status bilan javob beradi."""
+
+    def __init__(self, status: int, body: dict) -> None:
+        super().__init__()
+        self.status, self.body = status, body
+
+    def handler(self, request: httpx.Request) -> httpx.Response:
+        self.calls += 1
+        return httpx.Response(self.status, json=self.body)
+
+
+async def test_permanent_error_is_not_retried(client, admin, user, menu, configure):
+    fake = configure(StatusTelegram(403, {"ok": False, "description": "bot was kicked"}))
+    order = await place_order(client, user, menu)
+    assert fake.calls == 1
+    assert await notify_status(client, admin, order["id"]) == "failed"
+
+
+async def test_rate_limit_waits_as_telegram_asks(client, admin, user, menu, configure, monkeypatch):
+    from app.services import order_notify
+
+    waits: list[float] = []
+
+    async def fake_sleep(seconds: float) -> None:
+        waits.append(seconds)
+
+    monkeypatch.setattr(order_notify, "_wait", fake_sleep)
+    fake = configure(StatusTelegram(429, {"ok": False, "parameters": {"retry_after": 7}}))
+    await place_order(client, user, menu)
+    assert fake.calls == 1 + len(get_settings().notify_retry_delays)
+    assert waits == [7, 7, 7]  # sozlamadagi 0 o'rniga Telegram aytgan 7 soniya
