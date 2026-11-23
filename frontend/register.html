@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://telegram.org; img-src 'self' data:; connect-src 'self'; style-src 'self'; base-uri 'none'; form-action 'self'">
+  <title>Ro'yxatdan o'tish — Lunch</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <script type="module" src="/assets/js/pages/register.js"></script>
+</head>
+<body>
+  <main>
+    <h1>Ro'yxatdan o'tish</h1>
+    <form id="register-form" class="card" novalidate>
+      <label for="full_name">Ism va familiya</label>
+      <input id="full_name" name="full_name" type="text" autocomplete="name" required>
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="email" required>
+      <label for="password">Parol</label>
+      <input id="password" name="password" type="password" autocomplete="new-password" required>
+      <p class="hint">Kamida 8 belgi</p>
+      <p id="form-error" class="error" role="alert"></p>
+      <button class="btn btn-block" type="submit">Ro'yxatdan o'tish</button>
+    </form>
+    <p class="hint">Hisobingiz bormi? <a href="/login.html">Kiring</a></p>
+  </main>
+</body>
+</html>

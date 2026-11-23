@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://telegram.org; img-src 'self' data:; connect-src 'self'; style-src 'self'; base-uri 'none'; form-action 'self'">
+  <title>Kirish — Lunch</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <script type="module" src="/assets/js/pages/login.js"></script>
+</head>
+<body>
+  <main>
+    <h1>Kirish</h1>
+    <form id="login-form" class="card" novalidate>
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="email" required>
+      <label for="password">Parol</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <p id="form-error" class="error" role="alert"></p>
+      <button class="btn btn-block" type="submit">Kirish</button>
+    </form>
+    <p class="hint">Hisobingiz yo'qmi? <a href="/register.html">Ro'yxatdan o'ting</a></p>
+  </main>
+</body>
+</html>
