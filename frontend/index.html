@@ -2,11 +2,19 @@
 <html lang="uz">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lunch</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://telegram.org; img-src 'self' data:; connect-src 'self'; style-src 'self'; base-uri 'none'; form-action 'self'">
+  <title>Menyu — Lunch</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="/assets/css/app.css">
+  <script type="module" src="/assets/js/pages/menu.js"></script>
 </head>
 <body>
-  <main><p class="empty">Yuklanmoqda…</p></main>
+  <main>
+    <h1>Menyu</h1>
+    <div id="tabs" class="tabs" role="toolbar" aria-label="Kategoriyalar"></div>
+    <div id="items" class="items"><p class="empty">Yuklanmoqda…</p></div>
+  </main>
+  <button id="to-cart" class="btn main-button" type="button" hidden></button>
 </body>
 </html>

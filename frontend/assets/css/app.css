@@ -155,3 +155,12 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
 .toast-visible { opacity: 1; transform: none; }
 .toast-error { background: #b3261e; }
 .toast-success { background: #1e7e46; }
+
+/* `hidden` atributi har doim ustun tursin (.btn va boshqalarning display'idan). */
+[hidden] { display: none !important; }
+.items > .empty { grid-column: 1 / -1; }
+.item .no-photo {
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--hint) 18%, var(--bg));
+}
+.item .no-photo::after { content: "🍽"; font-size: 32px; opacity: .6; }
