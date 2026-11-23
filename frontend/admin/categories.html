@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://telegram.org; img-src 'self' data:; connect-src 'self'; style-src 'self'; base-uri 'none'; form-action 'self'">
+  <title>Kategoriyalar — Admin</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <script type="module" src="/assets/js/pages/admin-categories.js"></script>
+</head>
+<body>
+  <main>
+    <h2>Yangi kategoriya</h2>
+    <form id="add-form" class="card admin-toolbar">
+      <input name="name" type="text" maxlength="100" placeholder="Masalan: Osh" aria-label="Kategoriya nomi" required>
+      <button class="btn" type="submit">Qo'shish</button>
+    </form>
+    <h2>Kategoriyalar</h2>
+    <div id="categories"></div>
+    <p class="hint">Yashirin kategoriya va uning ovqatlari mijozlar menyusida ko'rinmaydi.</p>
+  </main>
+</body>
+</html>

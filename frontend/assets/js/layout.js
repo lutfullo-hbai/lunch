@@ -6,10 +6,15 @@ import { icon } from "./icons.js";
 import { getSession } from "./session.js";
 import { el } from "./ui.js";
 
-const LINKS = [
+export const USER_LINKS = [
   { href: "/", label: "Menyu", page: "menu", icon: "menu" },
   { href: "/cart.html", label: "Savat", page: "cart", icon: "bag" },
   { href: "/orders.html", label: "Buyurtmalar", page: "orders", icon: "receipt" },
+];
+
+export const ADMIN_LINKS = [
+  { href: "/admin/categories.html", label: "Kategoriyalar", page: "admin-categories", icon: "list" },
+  { href: "/", label: "Do'kon", page: "shop", icon: "bag" },
 ];
 
 function initials(name) {
@@ -25,6 +30,7 @@ function profile(user) {
   const pop = el("div", { className: "profile-pop", attrs: { role: "dialog", "aria-label": "Profil" } }, [
     el("strong", { text: user.full_name }),
     el("span", { className: "hint", text: user.email }),
+    user.role === "admin" ? el("a", { className: "btn btn-ghost", text: "Admin panel", attrs: { href: "/admin.html" } }) : "",
     el("button", { className: "btn btn-ghost", text: "Chiqish", attrs: { type: "button" }, on: { click: logout } }),
   ]);
   pop.hidden = true;
@@ -47,9 +53,9 @@ function profile(user) {
   return el("div", { className: "profile" }, [button, pop]);
 }
 
-export function renderNav(active) {
+export function renderNav(active, links = USER_LINKS) {
   const user = getSession()?.user;
-  const tabs = LINKS.map(({ href, label, page, icon: name }) => {
+  const tabs = links.map(({ href, label, page, icon: name }) => {
     const iconWrap = el("span", { className: "icon-wrap" }, [icon(name)]);
     if (page === "cart") iconWrap.append(el("span", { className: "badge", attrs: { id: "cart-badge" } }));
     const link = el("a", { attrs: { href } }, [iconWrap, el("span", { text: label })]);
@@ -58,7 +64,10 @@ export function renderNav(active) {
   });
   const header = el("header", { className: "topbar" }, [
     el("div", { className: "topbar-inner" }, [
-      el("div", { className: "brand" }, [el("span", { className: "brand-mark", text: "🍽" }), el("span", { text: "Lunch" })]),
+      el("div", { className: "brand" }, [
+        el("span", { className: "brand-mark", text: "🍽" }),
+        el("span", { text: links === ADMIN_LINKS ? "Lunch · Admin" : "Lunch" }),
+      ]),
       user ? profile(user) : "",
     ]),
     el("nav", { className: "tabbar", attrs: { "aria-label": "Bo'limlar" } }, tabs),

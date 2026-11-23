@@ -1,8 +1,7 @@
-import { logout, requireUser } from "../auth.js";
+import { requireAdmin } from "../auth.js";
 import { initTelegram } from "../telegram.js";
 
+// Admin bosh sahifasi hozircha birinchi admin bo'limiga yo'naltiradi.
 initTelegram();
-const user = await requireUser();
-if (user.role !== "admin") location.replace("/");
-document.getElementById("admin-name").textContent = user.full_name;
-document.getElementById("logout").addEventListener("click", logout);
+await requireAdmin();
+location.replace("/admin/categories.html");

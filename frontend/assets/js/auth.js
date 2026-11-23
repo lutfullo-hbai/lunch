@@ -27,6 +27,16 @@ export async function requireUser() {
   return session.user;
 }
 
+// Faqat admin uchun sahifalar: oddiy user menyuga qaytariladi.
+export async function requireAdmin() {
+  const user = await requireUser();
+  if (user.role !== "admin") {
+    location.replace("/");
+    return new Promise(() => {});
+  }
+  return user;
+}
+
 export async function redirectIfLoggedIn() {
   const session = await currentSession();
   if (session) location.replace(homeFor(session.user));
@@ -47,6 +57,13 @@ const MESSAGES = {
   EMAIL_TAKEN: "Bu email bilan ro'yxatdan o'tilgan. Kirish sahifasiga o'ting",
   USER_INACTIVE: "Hisobingiz bloklangan. Administratorga murojaat qiling",
   NETWORK_ERROR: "Internet aloqasini tekshiring",
+  FORBIDDEN: "Bu amal faqat admin uchun",
+  CATEGORY_EXISTS: "Bu nomli kategoriya bor",
+  CATEGORY_NOT_FOUND: "Kategoriya topilmadi (o'chirilgan bo'lishi mumkin)",
+  MENU_ITEM_NOT_FOUND: "Ovqat topilmadi (o'chirilgan bo'lishi mumkin)",
+  INVALID_IMAGE: "Faqat JPEG, PNG yoki WebP rasm yuklang",
+  IMAGE_TOO_LARGE: "Rasm juda katta",
+  REQUEST_TOO_LARGE: "Fayl juda katta",
 };
 
 // Pydantic xabarlari inglizcha keladi: maydonga qarab o'zbekcha matn ko'rsatamiz.
@@ -54,6 +71,11 @@ const FIELD_ERRORS = {
   full_name: "Ism kamida 2 harfdan iborat bo'lsin",
   email: "Email manzili noto'g'ri",
   password: "Parolni kiriting",
+  name: "Nomni kiriting",
+  price: "Narx musbat son bo'lsin (masalan 45000)",
+  category_id: "Kategoriyani tanlang",
+  portion: "Porsiya 50 belgidan oshmasin",
+  sort_order: "Tartib raqami noto'g'ri",
 };
 const OWN_MESSAGE_PREFIX = "Value error, ";
 
@@ -67,6 +89,10 @@ export function errorText(error) {
     // Backend'da o'zimiz yozgan tekshiruvlar (parol uzunligi va h.k.) allaqachon o'zbekcha.
     if (message.startsWith(OWN_MESSAGE_PREFIX)) return message.slice(OWN_MESSAGE_PREFIX.length);
     return FIELD_ERRORS[field.split(".").pop()] ?? "Ma'lumotlar noto'g'ri";
+  }
+  if (error.code === "CATEGORY_NOT_EMPTY") {
+    const count = error.details?.items_count ?? "";
+    return `Kategoriyada ${count} ta ovqat bor. Avval ularni o'chiring yoki boshqa kategoriyaga o'tkazing`;
   }
   return MESSAGES[error.code] ?? error.message ?? "Xatolik yuz berdi";
 }

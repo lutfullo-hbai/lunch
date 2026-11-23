@@ -104,3 +104,31 @@ export function passwordToggle(input) {
   input.replaceWith(wrap);
   wrap.append(input, button);
 }
+
+// Xavfli amal (o'chirish) ikki bosishda: brauzer oynasi (confirm) Telegram ichida noqulay.
+export function confirmButton({ label, confirmLabel, className = "btn btn-danger-soft", onConfirm }) {
+  const button = el("button", { className, text: label, attrs: { type: "button" } });
+  let armed = false;
+  let timer = null;
+  const reset = () => {
+    armed = false;
+    button.textContent = label;
+  };
+  button.addEventListener("click", async () => {
+    if (!armed) {
+      armed = true;
+      button.textContent = confirmLabel;
+      timer = setTimeout(reset, 4000);
+      return;
+    }
+    clearTimeout(timer);
+    button.disabled = true;
+    try {
+      await onConfirm();
+    } finally {
+      button.disabled = false;
+      reset();
+    }
+  });
+  return button;
+}
