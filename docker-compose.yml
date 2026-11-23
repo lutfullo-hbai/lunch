@@ -32,6 +32,18 @@ services:
     volumes:
       - media_data:/app/media
 
+  # Frontend (statik fayllar) va /api, /media proksi: hammasi bitta manzilda.
+  web:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:${WEB_HOST_PORT:-8081}:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
 volumes:
   pg_data:
   media_data:

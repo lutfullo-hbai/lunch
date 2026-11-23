@@ -1,0 +1,157 @@
+/* Ranglar Telegram mavzusidan olinadi (--tg-theme-*). Brauzerda o'zimizning ranglar ishlaydi. */
+:root {
+  --bg: var(--tg-theme-bg-color, #ffffff);
+  --bg-2: var(--tg-theme-secondary-bg-color, #f2f2f5);
+  --text: var(--tg-theme-text-color, #16161a);
+  --hint: var(--tg-theme-hint-color, #8a8a93);
+  --link: var(--tg-theme-link-color, #2481cc);
+  --accent: var(--tg-theme-button-color, #2481cc);
+  --accent-text: var(--tg-theme-button-text-color, #ffffff);
+  --danger: var(--tg-theme-destructive-text-color, #d93a3a);
+  --success: #2e9e5b;
+  --radius: 12px;
+  --gap: 12px;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.in-telegram) {
+    --bg: #17181c;
+    --bg-2: #22242a;
+    --text: #f2f2f5;
+    --hint: #9a9aa3;
+    --link: #6ab3f3;
+    --accent: #3a8fd9;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg-2);
+  color: var(--text);
+  font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+main {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 16px 16px 96px;
+}
+
+h1 { font-size: 22px; margin: 4px 0 16px; }
+h2 { font-size: 17px; margin: 20px 0 8px; }
+a { color: var(--link); }
+.hint { color: var(--hint); font-size: 14px; }
+
+/* Navigatsiya */
+.nav {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; gap: 4px; justify-content: space-around;
+  background: var(--bg); padding: 8px; border-bottom: 1px solid var(--bg-2);
+}
+.nav a {
+  flex: 1; text-align: center; padding: 8px 4px; border-radius: 8px;
+  color: var(--hint); text-decoration: none; font-size: 14px;
+}
+.nav a[aria-current="page"] { color: var(--accent); background: var(--bg-2); font-weight: 600; }
+.nav .badge {
+  display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 2px;
+  border-radius: 9px; background: var(--accent); color: var(--accent-text); font-size: 12px;
+}
+
+/* Kartalar va formalar */
+.card {
+  background: var(--bg); border-radius: var(--radius);
+  padding: 14px; margin-bottom: var(--gap);
+}
+label { display: block; font-size: 14px; color: var(--hint); margin: 12px 0 6px; }
+input[type="email"], input[type="password"], input[type="text"] {
+  width: 100%; padding: 12px; font-size: 16px;
+  border: 1px solid var(--bg-2); border-radius: 10px;
+  background: var(--bg-2); color: var(--text);
+}
+input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 10px; padding: 12px 16px;
+  font-size: 16px; font-weight: 600; cursor: pointer;
+  background: var(--accent); color: var(--accent-text);
+}
+.btn:disabled { opacity: .55; cursor: default; }
+.btn-block { width: 100%; margin-top: 16px; }
+.btn-ghost { background: var(--bg-2); color: var(--text); }
+.btn-danger { background: transparent; color: var(--danger); padding: 8px 0; }
+.is-busy { position: relative; color: transparent !important; }
+.is-busy::after {
+  content: ""; position: absolute; width: 18px; height: 18px;
+  border: 2px solid var(--accent-text); border-right-color: transparent;
+  border-radius: 50%; animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Telegram'dan tashqarida pastdagi asosiy tugma */
+.main-button {
+  position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 10;
+  max-width: 528px; margin: 0 auto; width: auto;
+}
+.in-telegram .main-button { display: none; }
+
+/* Menyu */
+.tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 8px; }
+.tab {
+  flex: none; border: 0; border-radius: 18px; padding: 8px 14px; font-size: 14px;
+  background: var(--bg); color: var(--text); cursor: pointer;
+}
+.tab[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
+.items { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--gap); }
+.item { background: var(--bg); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
+.item img, .item .no-photo { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--bg-2); display: block; }
+.item-body { padding: 10px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.item-name { font-weight: 600; font-size: 15px; }
+.item-price { font-weight: 600; margin-top: auto; }
+
+.stepper { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+.stepper button {
+  width: 36px; height: 36px; border: 0; border-radius: 10px; font-size: 20px; line-height: 1;
+  background: var(--accent); color: var(--accent-text); cursor: pointer;
+}
+.stepper button:disabled { opacity: .35; cursor: default; }
+.stepper output { min-width: 24px; text-align: center; font-weight: 600; }
+.add-button { width: 100%; margin-top: 8px; padding: 9px; }
+
+/* Savat va buyurtmalar */
+.row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.line { padding: 10px 0; border-bottom: 1px solid var(--bg-2); }
+.line:last-child { border-bottom: 0; }
+.total { font-size: 18px; font-weight: 700; }
+.choice { display: flex; gap: 8px; }
+.choice label {
+  flex: 1; margin: 0; padding: 12px; text-align: center; border-radius: 10px; cursor: pointer;
+  background: var(--bg-2); color: var(--text); font-size: 15px;
+}
+.choice input { position: absolute; opacity: 0; pointer-events: none; }
+.choice input:checked + span { color: var(--accent); font-weight: 700; }
+.choice label:has(input:checked) { outline: 2px solid var(--accent); }
+
+.status { font-size: 13px; padding: 3px 8px; border-radius: 8px; background: var(--bg-2); }
+.status-new { color: var(--link); }
+.status-accepted, .status-ready { color: #c98a00; }
+.status-delivered { color: var(--success); }
+.status-cancelled { color: var(--danger); }
+
+.empty { text-align: center; color: var(--hint); padding: 40px 16px; }
+.error { color: var(--danger); font-size: 14px; margin-top: 8px; min-height: 1em; }
+
+.toast {
+  position: fixed; left: 16px; right: 16px; bottom: 84px; z-index: 20;
+  max-width: 528px; margin: 0 auto; padding: 12px 14px; border-radius: 10px;
+  background: #222; color: #fff; font-size: 15px;
+  opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; pointer-events: none;
+}
+.toast-visible { opacity: 1; transform: none; }
+.toast-error { background: #b3261e; }
+.toast-success { background: #1e7e46; }
