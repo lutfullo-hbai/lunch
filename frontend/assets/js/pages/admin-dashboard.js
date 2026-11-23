@@ -118,8 +118,12 @@ function renderTop(stats) {
     ...stats.top_items.map((item, i) =>
       el("div", { className: "rank-row" }, [
         el("span", { className: "rank", text: String(i + 1) }),
-        el("div", {}, [el("div", { className: "dish-name", text: item.name }), el("div", { className: "hint", text: `${item.quantity} ta sotilgan` })]),
-        el("strong", { text: money(item.revenue) }),
+        // Summa tushumdan farq qiladi (yetkazilmaganlar ham kiradi), shuning uchun nomi aniq.
+        el("div", {}, [
+          el("div", { className: "dish-name", text: item.name }),
+          el("div", { className: "hint", text: `buyurtmalar summasi ${money(item.revenue)}` }),
+        ]),
+        el("strong", { text: `${item.quantity} ta` }),
       ]),
     ),
   );

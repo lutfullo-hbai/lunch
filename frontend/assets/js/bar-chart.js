@@ -17,11 +17,13 @@ function svg(tag, attrs = {}) {
   return node;
 }
 
-// O'qdagi chegaralar "chiroyli" sonlar bo'lsin: 0, 50 000, 100 000…
-function niceMax(value) {
-  if (value <= 0) return 1;
-  const magnitude = 10 ** Math.floor(Math.log10(value));
-  const step = [1, 2, 2.5, 5, 10].find((m) => m * magnitude >= value / TICKS) * magnitude;
+// O'qdagi chegaralar "chiroyli" sonlar bo'lsin: 0, 50 000, 100 000, 150 000.
+// Qadam (max / TICKS) yaxlitlanadi, shunda eng baland ustun o'qning tepasiga yaqin turadi.
+export function niceMax(value) {
+  if (value <= 0) return TICKS;
+  const rawStep = value / TICKS;
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+  const step = [1, 1.5, 2, 2.5, 3, 5, 10].find((m) => m * magnitude >= rawStep) * magnitude;
   return step * TICKS;
 }
 
