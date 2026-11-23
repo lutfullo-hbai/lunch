@@ -1,15 +1,17 @@
 import { publicPost } from "../api.js";
 import { errorText, homeFor, redirectIfLoggedIn } from "../auth.js";
 import { saveTokens } from "../session.js";
-import { haptic, initTelegram } from "../telegram.js";
-import { setBusy } from "../ui.js";
+import { haptic, initTelegram, telegramName } from "../telegram.js";
+import { passwordToggle, setBusy } from "../ui.js";
 
 initTelegram();
-await redirectIfLoggedIn();
 
 const form = document.getElementById("register-form");
 const error = document.getElementById("form-error");
 const submit = form.querySelector("button[type=submit]");
+passwordToggle(form.password);
+const nameFromTelegram = telegramName();
+if (nameFromTelegram && !form.full_name.value) form.full_name.value = nameFromTelegram;
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -30,3 +32,6 @@ form.addEventListener("submit", async (event) => {
     setBusy(submit, false);
   }
 });
+
+// Forma tayyor bo'lgach tekshiramiz: kirgan user bu sahifada qolmasin.
+await redirectIfLoggedIn();

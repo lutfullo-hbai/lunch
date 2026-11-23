@@ -9,11 +9,20 @@ import { secureStorage } from "./telegram.js";
 const REFRESH_KEY = "lunch_refresh";
 const SESSION_KEY = "lunch_session";
 
+// Ba'zi Telegram ilovalari javob bermasligi mumkin: shu vaqtdan keyin oddiy saqlashga o'tamiz.
+const SECURE_STORAGE_TIMEOUT_MS = 1500;
+
 function secureCall(method, ...args) {
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("SecureStorage timeout")), SECURE_STORAGE_TIMEOUT_MS);
     try {
-      secureStorage[method](...args, (error, value) => (error ? reject(error) : resolve(value)));
+      secureStorage[method](...args, (error, value) => {
+        clearTimeout(timer);
+        if (error) reject(error);
+        else resolve(value);
+      });
     } catch (error) {
+      clearTimeout(timer);
       reject(error);
     }
   });
