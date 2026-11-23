@@ -77,6 +77,8 @@ const FIELD_ERRORS = {
   full_name: "Ism kamida 2 harfdan iborat bo'lsin",
   email: "Email manzili noto'g'ri",
   password: "Parolni kiriting",
+  current_password: "Joriy parol noto'g'ri",
+  new_password: "Yangi parol qoidaga mos emas",
   name: "Nomni kiriting",
   price: "Narx musbat son bo'lsin (masalan 45000)",
   category_id: "Kategoriyani tanlang",

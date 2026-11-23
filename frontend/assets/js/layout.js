@@ -33,6 +33,7 @@ function profile(user) {
   const pop = el("div", { className: "profile-pop", attrs: { role: "dialog", "aria-label": "Profil" } }, [
     el("strong", { text: user.full_name }),
     el("span", { className: "hint", text: user.email }),
+    el("a", { className: "btn btn-ghost", text: "Profil va parol", attrs: { href: "/profile.html" } }),
     user.role === "admin" ? el("a", { className: "btn btn-ghost", text: "Admin panel", attrs: { href: "/admin.html" } }) : "",
     user.role === "admin" ? el("a", { className: "btn btn-ghost", text: "Do'kon (mijoz ko'rinishi)", attrs: { href: "/" } }) : "",
     el("button", { className: "btn btn-ghost", text: "Chiqish", attrs: { type: "button" }, on: { click: logout } }),

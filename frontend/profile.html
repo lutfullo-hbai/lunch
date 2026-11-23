@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://telegram.org; img-src 'self' data:; connect-src 'self'; style-src 'self'; base-uri 'none'; form-action 'self'">
+  <title>Profil — Lunch</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <script type="module" src="/assets/js/pages/profile.js"></script>
+</head>
+<body>
+  <main>
+    <h2>Profil</h2>
+    <section class="card">
+      <dl class="facts">
+        <dt>Ism</dt><dd id="full-name"></dd>
+        <dt>Email</dt><dd id="email"></dd>
+        <dt>Rol</dt><dd id="role"></dd>
+      </dl>
+    </section>
+
+    <h2>Parolni almashtirish</h2>
+    <form id="password-form" class="card" novalidate>
+      <label for="current_password">Joriy parol</label>
+      <input id="current_password" name="current_password" type="password" autocomplete="current-password" required>
+      <p id="error-current_password" class="field-error" role="alert"></p>
+
+      <label for="new_password">Yangi parol</label>
+      <input id="new_password" name="new_password" type="password" autocomplete="new-password" minlength="8" required>
+      <p id="error-new_password" class="field-error" role="alert"></p>
+
+      <label for="confirm_password">Yangi parolni takrorlang</label>
+      <input id="confirm_password" name="confirm_password" type="password" autocomplete="new-password" required>
+      <p id="error-confirm_password" class="field-error" role="alert"></p>
+
+      <p class="hint">Kamida 8 belgi. Almashtirilgach, boshqa qurilmalardan tizimdan chiqarilasiz.</p>
+      <button class="btn btn-block" type="submit">Parolni almashtirish</button>
+    </form>
+  </main>
+</body>
+</html>
