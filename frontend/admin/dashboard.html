@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://telegram.org; img-src 'self' data:; connect-src 'self'; style-src 'self'; base-uri 'none'; form-action 'self'">
+  <title>Statistika — Admin</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <script type="module" src="/assets/js/pages/admin-dashboard.js"></script>
+</head>
+<body>
+  <main>
+    <div id="period" class="segmented" role="group" aria-label="Davr"></div>
+    <p id="period-caption" class="hint"></p>
+    <div id="tiles" class="tiles"></div>
+    <h2>Kunlik tushum</h2>
+    <section id="chart" class="card"></section>
+    <h2>Holatlar</h2>
+    <section id="statuses" class="card"></section>
+    <h2>Eng ko'p sotilgan</h2>
+    <section id="top" class="card"></section>
+    <h2>So'nggi buyurtmalar</h2>
+    <section id="recent" class="card"></section>
+  </main>
+</body>
+</html>

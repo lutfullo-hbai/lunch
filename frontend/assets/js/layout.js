@@ -13,9 +13,10 @@ export const USER_LINKS = [
 ];
 
 export const ADMIN_LINKS = [
+  { href: "/admin/dashboard.html", label: "Statistika", page: "admin-dashboard", icon: "chart" },
   { href: "/admin/orders.html", label: "Buyurtmalar", page: "admin-orders", icon: "receipt" },
   { href: "/admin/menu.html", label: "Ovqatlar", page: "admin-menu", icon: "menu" },
-  { href: "/admin/categories.html", label: "Kategoriyalar", page: "admin-categories", icon: "list" },
+  { href: "/admin/categories.html", label: "Kategoriya", page: "admin-categories", icon: "list" },
   { href: "/admin/users.html", label: "Userlar", page: "admin-users", icon: "users" },
 ];
 
