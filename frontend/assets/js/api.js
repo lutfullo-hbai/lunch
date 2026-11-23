@@ -33,18 +33,32 @@ async function parse(response) {
   );
 }
 
+// `body`: JSON uchun obyekt, yoki tayyor baytlar uchun RawBody (apiRaw orqali).
+function encodeBody(body) {
+  if (body === undefined) return { bytes: new Uint8Array(), contentType: null };
+  if (body instanceof RawBody) return { bytes: body.bytes, contentType: body.contentType };
+  return { bytes: encoder.encode(JSON.stringify(body)), contentType: "application/json" };
+}
+
+class RawBody {
+  constructor(bytes, contentType) {
+    this.bytes = bytes;
+    this.contentType = contentType;
+  }
+}
+
 async function send(method, path, body, session) {
   const url = API_PREFIX + path;
-  const bytes = body === undefined ? new Uint8Array() : encoder.encode(JSON.stringify(body));
+  const { bytes, contentType } = encodeBody(body);
   const headers = {};
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (contentType) headers["Content-Type"] = contentType;
   if (session) {
     headers.Authorization = `Bearer ${session.access_token}`;
     Object.assign(headers, await signatureHeaders(session.signing_key, method, url, bytes));
   }
   let response;
   try {
-    response = await fetch(url, { method, headers, body: body === undefined ? undefined : bytes });
+    response = await fetch(url, { method, headers, body: contentType ? bytes : undefined });
   } catch {
     throw new ApiError(0, "NETWORK_ERROR", "Internet aloqasini tekshiring");
   }
@@ -88,4 +102,9 @@ export async function api(method, path, body) {
     if (!session) throw error;
     return send(method, path, body, session);
   }
+}
+
+// Tayyor baytlarni (masalan multipart) imzolab yuborish.
+export function apiRaw(method, path, bytes, contentType) {
+  return api(method, path, new RawBody(bytes, contentType));
 }

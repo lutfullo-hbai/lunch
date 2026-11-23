@@ -1,4 +1,7 @@
-import { api } from "../api.js";
+import { api, apiRaw } from "../api.js";
+import { IMAGE_MAX_UPLOAD_MB } from "../config.js";
+import { ACCEPTED_TYPES, shrinkImage } from "../image.js";
+import { buildMultipart } from "../multipart.js";
 import { errorText, requireAdmin } from "../auth.js";
 import { ADMIN_LINKS, renderNav } from "../layout.js";
 import { backButton, haptic, initTelegram } from "../telegram.js";
@@ -9,11 +12,19 @@ await requireAdmin();
 renderNav("admin-menu", ADMIN_LINKS);
 
 const LIST_PAGE = "/admin/menu.html";
-const itemId = new URLSearchParams(location.search).get("id");
+let itemId = new URLSearchParams(location.search).get("id");
 const form = document.getElementById("item-form");
 const title = document.getElementById("title");
 const submit = form.querySelector("button[type=submit]");
 const formError = document.getElementById("form-error");
+const imageInput = document.getElementById("image-input");
+const preview = document.getElementById("preview");
+const noImage = document.getElementById("no-image");
+const imageError = document.getElementById("error-image");
+const removeSlot = document.getElementById("remove-image");
+
+let pendingImage = null; // tanlangan, hali yuklanmagan rasm (Blob)
+let previewUrl = null;
 
 let dirty = false;
 backButton(() => leave(LIST_PAGE));
@@ -73,6 +84,62 @@ async function loadCategories(selectedId) {
   if (!categories.length) formError.textContent = "Avval kategoriya qo'shing (Kategoriyalar bo'limi)";
 }
 
+function showImage(url) {
+  preview.hidden = !url;
+  noImage.hidden = Boolean(url);
+  if (url) preview.src = url;
+}
+
+function renderRemoveButton(item) {
+  removeSlot.replaceChildren();
+  if (!item?.image_url) return;
+  removeSlot.append(
+    confirmButton({
+      label: "Rasmni o'chirish",
+      confirmLabel: "Rostdanmi?",
+      onConfirm: async () => {
+        try {
+          const updated = await api("DELETE", `/admin/menu/${item.id}/image`);
+          showImage(null);
+          renderRemoveButton(updated);
+          toast("Rasm o'chirildi", "success");
+        } catch (error) {
+          imageError.textContent = errorText(error);
+        }
+      },
+    }),
+  );
+}
+
+imageInput.addEventListener("change", async () => {
+  imageError.textContent = "";
+  const file = imageInput.files[0];
+  imageInput.value = ""; // o'sha faylni qayta tanlash ham ishlasin
+  if (!file) return;
+  if (!ACCEPTED_TYPES.includes(file.type)) {
+    imageError.textContent = "Faqat JPEG, PNG yoki WebP rasm tanlang";
+    return;
+  }
+  const image = await shrinkImage(file);
+  if (image.size > IMAGE_MAX_UPLOAD_MB * 1024 * 1024) {
+    imageError.textContent = `Rasm ${IMAGE_MAX_UPLOAD_MB} MB dan katta`;
+    return;
+  }
+  pendingImage = image;
+  if (previewUrl) URL.revokeObjectURL(previewUrl);
+  previewUrl = URL.createObjectURL(image);
+  showImage(previewUrl);
+  dirty = true;
+});
+
+async function uploadImage(id) {
+  const extension = { "image/webp": "webp", "image/png": "png" }[pendingImage.type] ?? "jpg";
+  const bytes = new Uint8Array(await pendingImage.arrayBuffer());
+  const { body, contentType } = buildMultipart("image", `rasm.${extension}`, pendingImage.type, bytes);
+  await apiRaw("PUT", `/admin/menu/${id}/image`, body, contentType);
+  pendingImage = null;
+}
+
 function fill(item) {
   form.name.value = item.name;
   form.price.value = String(Number(item.price));
@@ -90,16 +157,30 @@ form.addEventListener("submit", async (event) => {
     return;
   }
   setBusy(submit, true);
+  let saved;
   try {
-    const saved = itemId
-      ? await api("PATCH", `/admin/menu/${itemId}`, data)
-      : await api("POST", "/admin/menu", data);
-    haptic("success");
-    leave(LIST_PAGE, `"${saved.name}" saqlandi`);
+    saved = itemId ? await api("PATCH", `/admin/menu/${itemId}`, data) : await api("POST", "/admin/menu", data);
   } catch (error) {
     showError(error);
     setBusy(submit, false);
+    return;
   }
+  // Ovqat saqlandi; endi shu sahifa uning tahrirlash sahifasi (rasm yuklanmasa ham yo'qolmaydi).
+  itemId = String(saved.id);
+  history.replaceState(null, "", `?id=${itemId}`);
+  title.textContent = "Ovqatni tahrirlash";
+  if (pendingImage) {
+    try {
+      await uploadImage(itemId);
+    } catch (error) {
+      haptic("error");
+      imageError.textContent = `Ovqat saqlandi, lekin rasm yuklanmadi: ${errorText(error)}`;
+      setBusy(submit, false);
+      return;
+    }
+  }
+  haptic("success");
+  leave(LIST_PAGE, `"${saved.name}" saqlandi`);
 });
 
 try {
@@ -107,6 +188,8 @@ try {
     title.textContent = "Ovqatni tahrirlash";
     const item = await api("GET", `/admin/menu/${itemId}`);
     fill(item);
+    showImage(item.image_url);
+    renderRemoveButton(item);
     await loadCategories(item.category_id);
     document.getElementById("danger-zone").append(
       confirmButton({

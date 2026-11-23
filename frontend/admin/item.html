@@ -34,6 +34,19 @@
       <textarea id="description" name="description" maxlength="1000"></textarea>
       <p id="error-description" class="field-error" role="alert"></p>
 
+      <label>Rasm</label>
+      <div class="image-box">
+        <img id="preview" alt="Ovqat rasmi" hidden>
+        <span id="no-image" class="hint">Rasm yo'q</span>
+      </div>
+      <div class="image-actions">
+        <label class="btn btn-ghost" for="image-input">Rasm tanlash</label>
+        <input id="image-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+        <span id="remove-image"></span>
+      </div>
+      <p id="error-image" class="field-error" role="alert"></p>
+      <p class="hint">JPEG, PNG yoki WebP. Rasm saqlash tugmasi bosilganda yuklanadi.</p>
+
       <label class="check"><input name="is_available" type="checkbox" checked> Sotuvda</label>
 
       <p id="form-error" class="error" role="alert"></p>
