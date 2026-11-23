@@ -185,3 +185,14 @@ async def test_regular_user_gets_403(client):
     user = await register(client)
     response = await signed_request(client, user, "GET", "/admin/stats")
     assert response.status_code == 403
+
+
+async def test_top_items_keep_the_name_at_order_time(client, admin, data, db):
+    from sqlalchemy import update
+
+    await db.execute(
+        update(MenuItem).where(MenuItem.id == data["palov"]).values(name="Yangi palov")
+    )
+    await db.commit()
+    body = await get_stats(client, admin, "7d")
+    assert body["top_items"][0]["name"] == "Palov"

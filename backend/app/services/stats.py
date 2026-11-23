@@ -8,10 +8,11 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
 from sqlalchemy import ColumnElement, case, func, select
+from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.models import MenuItem, Order, OrderItem, User
+from app.models import Order, OrderItem, User
 from app.models.enums import OrderStatus, PaymentMethod, UserRole
 from app.schemas.stats import (
     DayStats,
@@ -108,17 +109,19 @@ async def _daily(db: AsyncSession, window: Window) -> list[DayStats]:
 
 async def _top_items(db: AsyncSession, window: Window) -> list[TopItem]:
     quantity = func.sum(OrderItem.quantity)
+    # Nom buyurtma paytidagidan (snapshot) olinadi, davrdagi eng so'nggi buyurtmadan:
+    # keyin ovqat nomi o'zgartirilsa ham, o'tgan davr statistikasi o'zgarmaydi.
+    name = func.array_agg(aggregate_order_by(OrderItem.name_snapshot, Order.created_at.desc()))[1]
     rows = await db.execute(
         select(
             OrderItem.menu_item_id,
-            MenuItem.name,
+            name,
             quantity,
             func.sum(OrderItem.price_snapshot * OrderItem.quantity),
         )
         .join(Order, OrderItem.order_id == Order.id)
-        .join(MenuItem, OrderItem.menu_item_id == MenuItem.id)
         .where(window.contains(Order.created_at), Order.status != OrderStatus.CANCELLED)
-        .group_by(OrderItem.menu_item_id, MenuItem.name)
+        .group_by(OrderItem.menu_item_id)
         .order_by(quantity.desc(), OrderItem.menu_item_id)
         .limit(TOP_ITEMS_LIMIT)
     )
