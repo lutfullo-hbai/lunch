@@ -103,6 +103,7 @@ Hammasi imzo talab qiladi va faqat `admin` roli uchun ochiq, boshqalar 403 oladi
 | Menyu | `GET`, `POST /admin/menu`; `GET`, `PATCH`, `DELETE /admin/menu/{id}`; `PUT`, `DELETE /admin/menu/{id}/image` |
 | Userlar | `GET /admin/users`; `GET /admin/users/{id}`; `GET /admin/users/{id}/orders`; `PATCH /admin/users/{id}/status` |
 | Buyurtmalar | `GET /admin/orders`; `GET /admin/orders/{id}`; `PATCH /admin/orders/{id}/status`; `POST /admin/orders/{id}/notify` |
+| Statistika | `GET /admin/stats?period=today\|7d\|30d` |
 
 Filtrlar:
 
@@ -118,3 +119,4 @@ Qoidalar:
 - **Userni bloklash:** barcha sessiyalari darhol yopiladi. Adminni bloklab bo'lmaydi.
 - **Buyurtma holati:** `new → accepted → ready → delivered` tartibida o'zgaradi, `delivered` gacha bekor qilish mumkin. Mumkin bo'lgan keyingi holatlar javobdagi `allowed_statuses` da keladi.
 - **Guruhga qayta yuborish:** `POST /admin/orders/{id}/notify` (202) `failed` yoki `pending` buyurtmani fonda qayta yuboradi. Yuborilgan bo'lsa `409 ORDER_ALREADY_NOTIFIED`, bot sozlanmagan bo'lsa `503 TELEGRAM_NOT_CONFIGURED`.
+- **Statistika:** `period` (default `today`) mahalliy kunlar bo'yicha (`TIMEZONE`). Javob: `orders` (jami va holat bo'yicha), `revenue` (faqat yetkazilgan buyurtmalar: `total`, `cash`, `card`), `users` (`total`, davrdagi `new`), `pending_orders` (hozir ochiq: yangi, qabul qilingan, tayyor), `daily` (har kun: `orders`, `revenue`; bo'sh kunlar 0 bilan), `top_items` (eng ko'p sotilgan 5 ta, bekor qilinganlarsiz).
