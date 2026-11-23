@@ -45,6 +45,14 @@ export function mainButton(fallback) {
       if (inTelegram) tg.MainButton.hide();
       else fallback.hidden = true;
     },
+    enabled(isEnabled) {
+      if (inTelegram) {
+        if (isEnabled) tg.MainButton.enable();
+        else tg.MainButton.disable();
+      } else {
+        fallback.disabled = !isEnabled;
+      }
+    },
     busy(isBusy) {
       if (inTelegram) {
         if (isBusy) tg.MainButton.showProgress(false);
