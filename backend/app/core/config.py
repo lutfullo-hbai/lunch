@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     # Buyurtma user bo'yicha cheklanadi: guruh spam bo'lib ketmasin.
     order_rate_limit: int = Field(default=20, ge=1)
     order_rate_window_seconds: int = Field(default=3600, ge=1)
+    # Parolni almashtirish user bo'yicha: joriy parolni taxmin qilib ko'rishdan himoya.
+    password_change_rate_limit: int = Field(default=5, ge=1)
+    password_change_rate_window_seconds: int = Field(default=900, ge=1)
 
     # --- Rasmlar ---
     media_dir: Path = Path("media")

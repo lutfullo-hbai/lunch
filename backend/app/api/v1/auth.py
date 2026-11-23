@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status
 
-from app.api.deps import Auth, CurrentUser, DbSession, rate_limit
-from app.schemas.auth import LoginIn, RefreshIn, RegisterIn, TokenOut, UserOut
+from app.api.deps import Auth, CurrentUser, DbSession, rate_limit, user_rate_limit
+from app.schemas.auth import ChangePasswordIn, LoginIn, RefreshIn, RegisterIn, TokenOut, UserOut
 from app.services import auth as auth_service
 
 router = APIRouter(tags=["auth"])
@@ -29,6 +29,15 @@ async def refresh(data: RefreshIn, db: DbSession) -> TokenOut:
 @router.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(auth: Auth, db: DbSession) -> None:
     await auth_service.logout(db, auth.session)
+
+
+@router.post(
+    "/auth/change-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[user_rate_limit("password_change")],
+)
+async def change_password(data: ChangePasswordIn, auth: Auth, db: DbSession) -> None:
+    await auth_service.change_password(db, auth.user, auth.session, data)
 
 
 @router.get("/me")

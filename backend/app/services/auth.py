@@ -15,6 +15,7 @@ from app.core.errors import (
     invalid_refresh_token,
     refresh_token_rotated,
     user_inactive,
+    validation_error,
 )
 from app.core.security import (
     create_access_token,
@@ -26,7 +27,7 @@ from app.core.security import (
 )
 from app.models import RefreshToken, User
 from app.models.enums import UserRole
-from app.schemas.auth import LoginIn, RegisterIn
+from app.schemas.auth import ChangePasswordIn, LoginIn, RegisterIn
 
 # Mavjud bo'lmagan email bilan login ham parolni tekshirgandek vaqt olishi uchun
 # (javob vaqtidan email bor-yo'qligini bilib bo'lmasin).
@@ -187,12 +188,34 @@ async def logout(db: AsyncSession, session: RefreshToken) -> None:
     await db.commit()
 
 
-async def revoke_all_sessions(db: AsyncSession, user_id: int) -> None:
-    await db.execute(
-        update(RefreshToken)
-        .where(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None))
-        .values(revoked_at=_now())
+async def revoke_all_sessions(
+    db: AsyncSession, user_id: int, keep: uuid.UUID | None = None
+) -> None:
+    """Userning barcha ochiq sessiyalarini yopadi (`keep` dan tashqari)."""
+    query = update(RefreshToken).where(
+        RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None)
     )
+    if keep is not None:
+        query = query.where(RefreshToken.jti != keep)
+    await db.execute(query.values(revoked_at=_now()))
+
+
+async def change_password(
+    db: AsyncSession, user: User, session: RefreshToken, data: ChangePasswordIn
+) -> None:
+    """Parolni almashtiradi va boshqa qurilmalardagi sessiyalarni yopadi.
+
+    Joriy sessiya qoladi: user shu qurilmada tizimdan chiqib ketmaydi.
+    """
+    # Refresh bilan bir xil tartibda qulflanadi (avval user), poyga bo'lmasin.
+    locked = await lock_user(db, user.id)
+    if locked is None or not verify_password(data.current_password, locked.password_hash):
+        raise validation_error("current_password", "Joriy parol noto'g'ri")
+    if data.new_password == data.current_password:
+        raise validation_error("new_password", "Yangi parol joriy paroldan farq qilsin")
+    locked.password_hash = hash_password(data.new_password)
+    await revoke_all_sessions(db, locked.id, keep=session.jti)
+    await db.commit()
 
 
 async def delete_stale_sessions(db: AsyncSession) -> int:

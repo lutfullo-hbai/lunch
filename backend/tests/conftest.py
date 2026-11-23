@@ -9,6 +9,7 @@ os.environ.setdefault("BCRYPT_ROUNDS", "4")  # testlar tez ishlashi uchun
 os.environ.setdefault("LOGIN_RATE_LIMIT", "100000")
 os.environ.setdefault("REGISTER_RATE_LIMIT", "100000")
 os.environ.setdefault("ORDER_RATE_LIMIT", "100000")
+os.environ.setdefault("PASSWORD_CHANGE_RATE_LIMIT", "100000")
 
 from collections.abc import AsyncIterator  # noqa: E402
 from contextlib import asynccontextmanager  # noqa: E402

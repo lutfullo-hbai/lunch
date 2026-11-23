@@ -7,7 +7,6 @@ from pydantic import (
     EmailStr,
     Field,
     StringConstraints,
-    field_validator,
 )
 
 from app.core.config import check_bcrypt_length, get_settings
@@ -19,26 +18,34 @@ Email = Annotated[EmailStr, AfterValidator(str.lower)]
 Password = Annotated[str, AfterValidator(check_bcrypt_length)]
 
 
+def _check_min_length(value: str) -> str:
+    min_length = get_settings().password_min_length
+    if len(value) < min_length:
+        raise ValueError(f"Parol kamida {min_length} belgidan iborat bo'lishi kerak")
+    return value
+
+
+# Yangi o'rnatiladigan parol (register, parolni almashtirish): uzunlik qoidalari bilan.
+NewPassword = Annotated[Password, AfterValidator(_check_min_length)]
+
+
 class RegisterIn(BaseModel):
     # Probellar uzunlik tekshiruvidan oldin olib tashlanadi: "   " ism bo'lib o'tmasin.
     full_name: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=2, max_length=120), NoNul
     ]
     email: Email
-    password: Password
-
-    @field_validator("password")
-    @classmethod
-    def check_min_length(cls, value: str) -> str:
-        min_length = get_settings().password_min_length
-        if len(value) < min_length:
-            raise ValueError(f"Parol kamida {min_length} belgidan iborat bo'lishi kerak")
-        return value
+    password: NewPassword
 
 
 class LoginIn(BaseModel):
     email: Email
     password: Annotated[Password, Field(min_length=1)]
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: Annotated[Password, Field(min_length=1)]
+    new_password: NewPassword
 
 
 class RefreshIn(BaseModel):
