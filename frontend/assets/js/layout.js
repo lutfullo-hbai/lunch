@@ -13,6 +13,7 @@ export const USER_LINKS = [
 ];
 
 export const ADMIN_LINKS = [
+  { href: "/admin/menu.html", label: "Ovqatlar", page: "admin-menu", icon: "menu" },
   { href: "/admin/categories.html", label: "Kategoriyalar", page: "admin-categories", icon: "list" },
   { href: "/", label: "Do'kon", page: "shop", icon: "bag" },
 ];

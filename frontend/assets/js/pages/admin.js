@@ -4,4 +4,4 @@ import { initTelegram } from "../telegram.js";
 // Admin bosh sahifasi hozircha birinchi admin bo'limiga yo'naltiradi.
 initTelegram();
 await requireAdmin();
-location.replace("/admin/categories.html");
+location.replace("/admin/menu.html");
