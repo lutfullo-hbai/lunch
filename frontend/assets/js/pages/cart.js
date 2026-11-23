@@ -3,7 +3,8 @@ import { errorText, requireUser } from "../auth.js";
 import { cartLines, cartTotal, clearCart, removeItems, setQuantity } from "../cart.js";
 import { renderNav, updateCartBadge } from "../layout.js";
 import { backButton, haptic, initTelegram, mainButton } from "../telegram.js";
-import { el, money, toast } from "../ui.js";
+import { icon } from "../icons.js";
+import { dishPhoto, el, emptyState, money, toast } from "../ui.js";
 
 initTelegram();
 await requireUser();
@@ -17,6 +18,8 @@ const paymentForm = document.getElementById("payment");
 const submit = mainButton(document.getElementById("place-order"));
 
 const PAYMENT_TEXT = { cash: "naqd", card: "karta" };
+document.getElementById("cash-icon").replaceWith(icon("cash"));
+document.getElementById("card-icon").replaceWith(icon("card"));
 
 function payment() {
   return paymentForm.payment_method.value || null;
@@ -28,18 +31,17 @@ function lineRow(line) {
     haptic("light");
     render();
   };
-  return el("div", { className: "line" }, [
-    el("div", { className: "row" }, [
-      el("div", {}, [
-        el("div", { className: "item-name", text: line.name }),
-        el("div", { className: "hint", text: `${money(line.price)} × ${line.quantity}` }),
-      ]),
-      el("strong", { text: money(Number(line.price) * line.quantity) }),
+  return el("article", { className: "dish" }, [
+    dishPhoto(line),
+    el("div", {}, [
+      el("div", { className: "dish-name", text: line.name }),
+      el("div", { className: "hint", text: `${money(line.price)} × ${line.quantity}` }),
+      el("div", { className: "dish-price", text: money(Number(line.price) * line.quantity) }),
     ]),
     el("div", { className: "stepper" }, [
-      el("button", { text: "−", attrs: { type: "button", "aria-label": `${line.name}: kamaytirish` }, on: { click: () => change(-1) } }),
+      el("button", { attrs: { type: "button", "aria-label": `${line.name}: kamaytirish` }, on: { click: () => change(-1) } }, [icon("minus")]),
       el("output", { text: String(line.quantity) }),
-      el("button", { text: "+", attrs: { type: "button", "aria-label": `${line.name}: ko'paytirish` }, on: { click: () => change(1) } }),
+      el("button", { attrs: { type: "button", "aria-label": `${line.name}: ko'paytirish` }, on: { click: () => change(1) } }, [icon("plus")]),
     ]),
   ]);
 }
@@ -47,14 +49,17 @@ function lineRow(line) {
 function render() {
   updateCartBadge();
   const lines = cartLines();
+  document.getElementById("lines-title").hidden = !lines.length;
   if (!lines.length) {
     linesBox.replaceChildren(
-      el("p", { className: "empty" }, ["Savat bo'sh. ", el("a", { text: "Menyuga o'tish", attrs: { href: "/" } })]),
+      emptyState(icon("bag"), "Savat bo'sh", "Menyudan ovqat tanlang", { label: "Menyuga o'tish", href: "/" }),
     );
+    linesBox.classList.remove("list");
     summary.hidden = true;
     submit.hide();
     return;
   }
+  linesBox.classList.add("list");
   linesBox.replaceChildren(...lines.map(lineRow));
   totalBox.textContent = money(cartTotal());
   summary.hidden = false;

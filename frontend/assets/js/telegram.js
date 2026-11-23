@@ -72,4 +72,10 @@ export function backButton(onClick) {
   tg.BackButton.show();
 }
 
+// Telegram'dagi ism (register formasini to'ldirish uchun). Faqat ko'rsatish uchun ishlatiladi.
+export function telegramName() {
+  const user = inTelegram ? tg.initDataUnsafe?.user : null;
+  return user ? [user.first_name, user.last_name].filter(Boolean).join(" ") : "";
+}
+
 export const secureStorage = inTelegram && tg.isVersionAtLeast?.("9.0") ? tg.SecureStorage : null;

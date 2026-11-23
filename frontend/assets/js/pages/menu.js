@@ -1,104 +1,113 @@
 import { api } from "../api.js";
-import { requireUser } from "../auth.js";
+import { errorText, requireUser } from "../auth.js";
 import { cartCount, cartTotal, quantityOf, setQuantity } from "../cart.js";
+import { icon } from "../icons.js";
 import { renderNav, updateCartBadge } from "../layout.js";
 import { haptic, initTelegram, mainButton } from "../telegram.js";
-import { el, money, toast } from "../ui.js";
+import { dishPhoto, el, emptyState, money, skeletonRows, toast } from "../ui.js";
 
 initTelegram();
 await requireUser();
 renderNav("menu");
 
-const tabsBox = document.getElementById("tabs");
-const itemsBox = document.getElementById("items");
+const chipsBox = document.getElementById("chips");
+const content = document.getElementById("content");
 const toCart = mainButton(document.getElementById("to-cart"));
 
 let categories = [];
 let items = [];
 let activeCategory = null; // null = hammasi
 
-function stepper(item, refresh) {
+content.replaceChildren(skeletonRows(5));
+
+function controls(item, rerender) {
   const quantity = quantityOf(item.id);
   const change = (delta) => {
     setQuantity(item, quantity + delta);
     haptic("light");
-    refresh();
+    rerender();
   };
   if (quantity === 0) {
-    return el("button", {
-      className: "btn add-button",
-      text: "Qo'shish",
-      attrs: { type: "button" },
-      on: { click: () => change(1) },
-    });
+    return el(
+      "button",
+      { className: "add", attrs: { type: "button", "aria-label": `${item.name}: savatga qo'shish` }, on: { click: () => change(1) } },
+      [icon("plus")],
+    );
   }
   return el("div", { className: "stepper" }, [
-    el("button", { text: "−", attrs: { type: "button", "aria-label": "Kamaytirish" }, on: { click: () => change(-1) } }),
-    el("output", { text: String(quantity) }),
-    el("button", { text: "+", attrs: { type: "button", "aria-label": "Ko'paytirish" }, on: { click: () => change(1) } }),
+    el("button", { attrs: { type: "button", "aria-label": `${item.name}: kamaytirish` }, on: { click: () => change(-1) } }, [icon("minus")]),
+    el("output", { text: String(quantity), attrs: { "aria-live": "polite" } }),
+    el("button", { attrs: { type: "button", "aria-label": `${item.name}: ko'paytirish` }, on: { click: () => change(1) } }, [icon("plus")]),
   ]);
 }
 
-function itemCard(item) {
-  const card = el("article", { className: "item" });
-  const controls = el("div");
-  const refresh = () => {
-    controls.replaceChildren(stepper(item, refresh));
+function dishRow(item) {
+  const action = el("div");
+  const rerender = () => {
+    action.replaceChildren(controls(item, rerender));
     updateCartBar();
   };
-  const photo = item.thumb_url
-    ? el("img", { attrs: { src: item.thumb_url, alt: item.name, loading: "lazy" } })
-    : el("div", { className: "no-photo", attrs: { "aria-hidden": "true" } });
-  const body = el("div", { className: "item-body" }, [
-    el("span", { className: "item-name", text: item.name }),
-    item.portion ? el("span", { className: "hint", text: item.portion }) : "",
-    el("span", { className: "item-price", text: money(item.price) }),
-    controls,
+  const row = el("article", { className: "dish" }, [
+    dishPhoto(item),
+    el("div", {}, [
+      el("div", { className: "dish-name", text: item.name }),
+      item.portion ? el("div", { className: "hint", text: item.portion }) : "",
+      el("div", { className: "dish-price", text: money(item.price) }),
+    ]),
+    action,
   ]);
-  card.append(photo, body);
-  refresh();
-  return card;
+  action.replaceChildren(controls(item, rerender));
+  return row;
 }
 
-function renderTabs() {
-  const tab = (id, name) =>
+function renderChips() {
+  const chip = (id, name) =>
     el("button", {
-      className: "tab",
+      className: "chip",
       text: name,
       attrs: { type: "button", "aria-pressed": String(activeCategory === id) },
       on: {
         click: () => {
           activeCategory = id;
-          renderTabs();
+          haptic("light");
+          renderChips();
           renderItems();
+          window.scrollTo({ top: 0 });
         },
       },
     });
-  tabsBox.replaceChildren(tab(null, "Hammasi"), ...categories.map((c) => tab(c.id, c.name)));
+  chipsBox.replaceChildren(chip(null, "Hammasi"), ...categories.map((c) => chip(c.id, c.name)));
 }
 
 function renderItems() {
-  const visible = activeCategory === null ? items : items.filter((i) => i.category_id === activeCategory);
-  if (!visible.length) {
-    itemsBox.replaceChildren(el("p", { className: "empty", text: "Hozircha ovqat yo'q" }));
+  if (!items.length) {
+    content.replaceChildren(emptyState(icon("menu"), "Menyu hozircha bo'sh", "Ovqatlar qo'shilganda shu yerda ko'rinadi"));
     return;
   }
-  itemsBox.replaceChildren(...visible.map(itemCard));
+  const shown = activeCategory === null ? categories : categories.filter((c) => c.id === activeCategory);
+  const sections = shown
+    .map((category) => {
+      const dishes = items.filter((i) => i.category_id === category.id);
+      if (!dishes.length) return null;
+      return el("section", {}, [el("h2", { text: category.name }), el("div", { className: "list" }, dishes.map(dishRow))]);
+    })
+    .filter(Boolean);
+  content.replaceChildren(...(sections.length ? sections : [emptyState(icon("menu"), "Bu bo'limda ovqat yo'q", "Boshqa bo'limni tanlang")]));
 }
 
 function updateCartBar() {
   updateCartBadge();
   const count = cartCount();
   if (count === 0) toCart.hide();
-  else toCart.show(`Savat: ${count} ta — ${money(cartTotal())}`, () => location.assign("/cart.html"));
+  else toCart.show(`Savat · ${count} ta · ${money(cartTotal())}`, () => location.assign("/cart.html"));
 }
 
 try {
   [categories, items] = await Promise.all([api("GET", "/categories"), api("GET", "/menu")]);
-  renderTabs();
+  renderChips();
   renderItems();
   updateCartBar();
 } catch (error) {
-  itemsBox.replaceChildren(el("p", { className: "empty", text: "Menyuni yuklab bo'lmadi" }));
-  toast(error.message, "error");
+  content.replaceChildren(emptyState(icon("menu"), "Menyuni yuklab bo'lmadi", errorText(error), { label: "Qayta urinish", href: "/" }));
+  toast(errorText(error), "error");
 }

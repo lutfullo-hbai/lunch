@@ -11,18 +11,20 @@
 </head>
 <body>
   <main>
-    <h1>Savat</h1>
-    <div id="lines" class="card"><p class="empty">Yuklanmoqda…</p></div>
-    <section id="summary" class="card" hidden>
-      <div class="row">
-        <span>Jami</span>
-        <span id="total" class="total"></span>
-      </div>
+    <h2 id="lines-title">Savatdagi ovqatlar</h2>
+    <div id="lines"></div>
+    <section id="summary" hidden>
       <h2>To'lov turi</h2>
-      <form id="payment" class="choice">
-        <label><input type="radio" name="payment_method" value="cash"><span>Naqd</span></label>
-        <label><input type="radio" name="payment_method" value="card"><span>Karta</span></label>
+      <form id="payment" class="card">
+        <div class="pay-options">
+          <label class="pay-option"><input type="radio" name="payment_method" value="cash"><span id="cash-icon"></span><span>Naqd</span></label>
+          <label class="pay-option"><input type="radio" name="payment_method" value="card"><span id="card-icon"></span><span>Karta</span></label>
+        </div>
       </form>
+      <div class="card">
+        <div class="summary-row"><span>Jami</span><span id="total" class="total"></span></div>
+        <p class="hint">Yakuniy summa buyurtma paytidagi narx bo'yicha hisoblanadi.</p>
+      </div>
     </section>
   </main>
   <button id="place-order" class="btn main-button" type="button" hidden></button>

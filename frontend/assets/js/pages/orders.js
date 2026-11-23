@@ -2,7 +2,8 @@ import { api } from "../api.js";
 import { errorText, requireUser } from "../auth.js";
 import { renderNav } from "../layout.js";
 import { backButton, haptic, initTelegram } from "../telegram.js";
-import { dateTime, el, money, toast } from "../ui.js";
+import { icon } from "../icons.js";
+import { dateTime, el, emptyState, money, skeletonRows, toast } from "../ui.js";
 
 initTelegram();
 await requireUser();
@@ -21,12 +22,25 @@ const STATUS = {
   cancelled: "Bekor qilingan",
 };
 const PAYMENT = { cash: "Naqd", card: "Karta" };
+// Buyurtma yo'li: progress chizig'i shu tartibda to'ladi.
+const STEPS = ["new", "accepted", "ready", "delivered"];
+const STEP_LABELS = ["Yangi", "Qabul", "Tayyor", "Yetkazildi"];
+
+function progress(status) {
+  const reached = STEPS.indexOf(status);
+  return [
+    el("div", { className: "progress", attrs: { "aria-hidden": "true" } },
+      STEPS.map((_, i) => el("span", { className: i <= reached ? "done" : "" })),
+    ),
+    el("div", { className: "progress-labels", attrs: { "aria-hidden": "true" } }, STEP_LABELS.map((t) => el("span", { text: t }))),
+  ];
+}
 
 // Bekor qilish ikki bosishda: brauzer oynasi (confirm) Telegram ichida noqulay.
 function cancelButton(order, card) {
   let armed = false;
   let timer = null;
-  const button = el("button", { className: "btn btn-danger", text: "Bekor qilish", attrs: { type: "button" } });
+  const button = el("button", { className: "btn btn-danger-soft", text: "Bekor qilish", attrs: { type: "button" } });
   button.addEventListener("click", async () => {
     if (!armed) {
       armed = true;
@@ -59,20 +73,23 @@ function cancelButton(order, card) {
 function orderCard(order) {
   const card = el("article", { className: "card" });
   card.append(
-    el("div", { className: "row" }, [
-      el("strong", { text: `#${order.id}` }),
+    el("div", { className: "order-head" }, [
+      el("span", { className: "order-id", text: `#${order.id}` }),
       el("span", { className: `status status-${order.status}`, text: STATUS[order.status] ?? order.status }),
     ]),
     el("div", { className: "hint", text: `${dateTime(order.created_at)} · ${PAYMENT[order.payment_method]}` }),
-    ...order.items.map((item) =>
-      el("div", { className: "row line" }, [
-        el("span", { text: `${item.name} × ${item.quantity}` }),
-        el("span", { text: money(item.subtotal) }),
-      ]),
+    ...(order.status === "cancelled" ? [] : progress(order.status)),
+    el("div", { className: "order-lines" },
+      order.items.map((item) =>
+        el("div", { className: "order-line" }, [
+          el("span", { text: `${item.name} × ${item.quantity}` }),
+          el("span", { text: money(item.subtotal) }),
+        ]),
+      ),
     ),
-    el("div", { className: "row" }, [el("span", { text: "Jami" }), el("strong", { text: money(order.total_price) })]),
+    el("div", { className: "summary-row" }, [el("span", { text: "Jami" }), el("span", { className: "total", text: money(order.total_price) })]),
   );
-  if (order.can_cancel) card.append(cancelButton(order, card));
+  if (order.can_cancel) card.append(el("div", { className: "order-actions" }, [cancelButton(order, card)]));
   return card;
 }
 
@@ -87,7 +104,7 @@ async function loadMore() {
     list.append(...result.items.map(orderCard));
     if (!result.total) {
       list.replaceChildren(
-        el("p", { className: "empty" }, ["Hali buyurtma yo'q. ", el("a", { text: "Menyuga o'tish", attrs: { href: "/" } })]),
+        emptyState(icon("receipt"), "Hali buyurtma yo'q", "Birinchi buyurtmangizni menyudan bering", { label: "Menyuga o'tish", href: "/" }),
       );
     }
     more.hidden = page * result.size >= result.total;
@@ -105,4 +122,5 @@ if (created) {
   toast(`Buyurtma #${created} qabul qilindi`, "success");
   history.replaceState(null, "", location.pathname);
 }
+list.replaceChildren(skeletonRows(3));
 await loadMore();
