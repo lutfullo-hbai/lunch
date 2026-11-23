@@ -3,7 +3,7 @@ import { errorText, requireAdmin } from "../auth.js";
 import { icon } from "../icons.js";
 import { ADMIN_LINKS, renderNav } from "../layout.js";
 import { haptic, initTelegram } from "../telegram.js";
-import { dishPhoto, el, emptyState, money, skeletonRows, toast } from "../ui.js";
+import { dishPhoto, el, emptyState, money, showFlash, skeletonRows, toast } from "../ui.js";
 
 initTelegram();
 await requireAdmin();
@@ -58,7 +58,11 @@ function itemRow(item) {
   ]);
 }
 
+// Filtr tez-tez o'zgarsa, sekin kelgan eski javob yangisining ustiga yozilmasin.
+let requestSeq = 0;
+
 async function load(reset) {
+  const seq = ++requestSeq;
   if (reset) {
     page = 0;
     listBox.replaceChildren(skeletonRows(5));
@@ -66,6 +70,7 @@ async function load(reset) {
   more.disabled = true;
   try {
     const result = await api("GET", query(page + 1));
+    if (seq !== requestSeq) return;
     page = result.page;
     if (reset) listBox.replaceChildren();
     if (!result.total) {
@@ -105,10 +110,6 @@ filters.available.addEventListener("change", () => load(true));
 filters.addEventListener("submit", (event) => event.preventDefault());
 more.addEventListener("click", () => load(false));
 
-const saved = new URLSearchParams(location.search).get("saved");
-if (saved) {
-  toast(saved, "success");
-  history.replaceState(null, "", location.pathname);
-}
+showFlash();
 
 await Promise.all([loadCategories().catch(() => {}), load(true)]);

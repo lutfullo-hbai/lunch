@@ -43,7 +43,11 @@ function userRow(user) {
   ]);
 }
 
+// Filtr tez-tez o'zgarsa, sekin kelgan eski javob yangisining ustiga yozilmasin.
+let requestSeq = 0;
+
 async function load(reset) {
+  const seq = ++requestSeq;
   if (reset) {
     page = 0;
     list.replaceChildren(skeletonRows(4));
@@ -51,6 +55,7 @@ async function load(reset) {
   more.disabled = true;
   try {
     const result = await api("GET", query(page + 1));
+    if (seq !== requestSeq) return;
     page = result.page;
     if (reset) list.replaceChildren();
     totalBox.textContent = `${result.total} ta user`;
