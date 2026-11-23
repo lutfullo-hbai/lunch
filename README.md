@@ -20,6 +20,18 @@ curl http://localhost:8080/health
 
 API hujjati (production'dan tashqari): http://localhost:8080/docs
 
+Frontend (login, menyu, savat, buyurtmalar): http://localhost:8081. nginx frontend fayllarini beradi va `/api`, `/media` so'rovlarini API'ga uzatadi.
+
+## Frontend
+
+Build bosqichi yo'q: `frontend/` dagi HTML, CSS va JS to'g'ridan-to'g'ri beriladi, o'zgarish sahifani yangilashda ko'rinadi.
+
+```bash
+cd frontend && npm test     # imzo backend bilan bir xil chiqishini tekshiradi
+```
+
+Telegram ichida ochish uchun HTTPS manzil kerak (lokalda tunnel, masalan `cloudflared tunnel --url http://localhost:8081`). Shu manzilni BotFather'da bot uchun Menu Button qilib qo'ying.
+
 ## Backend'ni lokal ishlab chiqish
 
 [uv](https://docs.astral.sh/uv/) kerak.
