@@ -1,4 +1,5 @@
 import { publicPost } from "../api.js";
+import { PASSWORD_MIN_LENGTH } from "../config.js";
 import { errorText, homeFor, redirectIfLoggedIn } from "../auth.js";
 import { saveTokens } from "../session.js";
 import { haptic, initTelegram, telegramName } from "../telegram.js";
@@ -10,6 +11,7 @@ const form = document.getElementById("register-form");
 const error = document.getElementById("form-error");
 const submit = form.querySelector("button[type=submit]");
 passwordToggle(form.password);
+document.getElementById("password-hint").textContent = `Kamida ${PASSWORD_MIN_LENGTH} belgi`;
 const nameFromTelegram = telegramName();
 if (nameFromTelegram && !form.full_name.value) form.full_name.value = nameFromTelegram;
 
