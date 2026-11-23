@@ -64,6 +64,12 @@ const MESSAGES = {
   INVALID_IMAGE: "Faqat JPEG, PNG yoki WebP rasm yuklang",
   IMAGE_TOO_LARGE: "Rasm juda katta",
   REQUEST_TOO_LARGE: "Fayl juda katta",
+  ORDER_NOT_FOUND: "Buyurtma topilmadi",
+  INVALID_STATUS_TRANSITION: "Bu holatga o'tkazib bo'lmaydi",
+  ORDER_ALREADY_NOTIFIED: "Buyurtma guruhga allaqachon yuborilgan",
+  TELEGRAM_NOT_CONFIGURED: "Telegram bot sozlanmagan (BOT_TOKEN, ORDERS_GROUP_CHAT_ID)",
+  USER_NOT_FOUND: "User topilmadi",
+  CANNOT_BLOCK_ADMIN: "Adminni bloklab bo'lmaydi",
 };
 
 // Pydantic xabarlari inglizcha keladi: maydonga qarab o'zbekcha matn ko'rsatamiz.
@@ -76,6 +82,7 @@ const FIELD_ERRORS = {
   category_id: "Kategoriyani tanlang",
   portion: "Porsiya 50 belgidan oshmasin",
   sort_order: "Tartib raqami noto'g'ri",
+  date_from: "Boshlanish sanasi tugash sanasidan keyin bo'lmasin",
 };
 const OWN_MESSAGE_PREFIX = "Value error, ";
 

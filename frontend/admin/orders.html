@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://telegram.org; img-src 'self' data:; connect-src 'self'; style-src 'self'; base-uri 'none'; form-action 'self'">
+  <title>Buyurtmalar — Admin</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <script type="module" src="/assets/js/pages/admin-orders.js"></script>
+</head>
+<body>
+  <main>
+    <form id="filters" class="card">
+      <div class="filters">
+        <select name="status" aria-label="Holat">
+          <option value="">Barcha holatlar</option>
+          <option value="new">Yangi</option>
+          <option value="accepted">Qabul qilindi</option>
+          <option value="ready">Tayyor</option>
+          <option value="delivered">Yetkazildi</option>
+          <option value="cancelled">Bekor qilingan</option>
+        </select>
+        <select name="payment_method" aria-label="To'lov turi">
+          <option value="">Naqd va karta</option>
+          <option value="cash">Naqd</option>
+          <option value="card">Karta</option>
+        </select>
+        <label class="date-field">Dan<input name="date_from" type="date"></label>
+        <label class="date-field">Gacha<input name="date_to" type="date"></label>
+      </div>
+      <label class="check"><input name="failed" type="checkbox"> Faqat guruhga yetib bormaganlar</label>
+      <div class="filter-actions">
+        <button class="btn btn-ghost" type="reset">Tozalash</button>
+        <button class="btn" type="submit">Yangilash</button>
+      </div>
+    </form>
+    <h2 id="total-count"></h2>
+    <div id="orders"></div>
+    <button id="more" class="btn btn-ghost btn-block" type="button" hidden>Yana ko'rsatish</button>
+  </main>
+</body>
+</html>

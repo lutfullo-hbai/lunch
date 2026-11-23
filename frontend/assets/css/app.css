@@ -319,3 +319,13 @@ select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset:
 .image-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .image-actions label.btn { margin: 0; color: var(--text); font-size: 15px; }
 .image-actions .btn { min-height: 40px; font-size: 15px; }
+.badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.notify-failed { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, var(--bg)); }
+.notify-pending { color: var(--warning); }
+.order-user { margin-top: 6px; font-weight: 600; }
+.order-user a { color: var(--text); }
+.order-admin-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 12px; }
+.order-admin-actions .btn { width: 100%; min-height: 42px; font-size: 15px; }
+.date-field { margin: 0; font-size: 12px; }
+.date-field input { width: 100%; min-height: var(--tap); margin-top: 4px; padding: 8px 10px; font: inherit; font-size: 15px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-2); color: var(--text); }
+.filter-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }

@@ -13,9 +13,9 @@ export const USER_LINKS = [
 ];
 
 export const ADMIN_LINKS = [
+  { href: "/admin/orders.html", label: "Buyurtmalar", page: "admin-orders", icon: "receipt" },
   { href: "/admin/menu.html", label: "Ovqatlar", page: "admin-menu", icon: "menu" },
   { href: "/admin/categories.html", label: "Kategoriyalar", page: "admin-categories", icon: "list" },
-  { href: "/", label: "Do'kon", page: "shop", icon: "bag" },
 ];
 
 function initials(name) {
@@ -32,6 +32,7 @@ function profile(user) {
     el("strong", { text: user.full_name }),
     el("span", { className: "hint", text: user.email }),
     user.role === "admin" ? el("a", { className: "btn btn-ghost", text: "Admin panel", attrs: { href: "/admin.html" } }) : "",
+    user.role === "admin" ? el("a", { className: "btn btn-ghost", text: "Do'kon (mijoz ko'rinishi)", attrs: { href: "/" } }) : "",
     el("button", { className: "btn btn-ghost", text: "Chiqish", attrs: { type: "button" }, on: { click: logout } }),
   ]);
   pop.hidden = true;

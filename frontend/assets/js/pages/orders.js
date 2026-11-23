@@ -3,6 +3,7 @@ import { errorText, requireUser } from "../auth.js";
 import { renderNav } from "../layout.js";
 import { backButton, haptic, initTelegram } from "../telegram.js";
 import { icon } from "../icons.js";
+import { PAYMENT_LABELS, STATUS_LABELS } from "../labels.js";
 import { dateTime, el, emptyState, money, skeletonRows, toast } from "../ui.js";
 
 initTelegram();
@@ -14,14 +15,8 @@ const list = document.getElementById("orders");
 const more = document.getElementById("more");
 const PAGE_SIZE = 20;
 
-const STATUS = {
-  new: "Yangi",
-  accepted: "Qabul qilindi",
-  ready: "Tayyor",
-  delivered: "Yetkazildi",
-  cancelled: "Bekor qilingan",
-};
-const PAYMENT = { cash: "Naqd", card: "Karta" };
+const STATUS = STATUS_LABELS;
+const PAYMENT = PAYMENT_LABELS;
 // Buyurtma yo'li: progress chizig'i shu tartibda to'ladi.
 const STEPS = ["new", "accepted", "ready", "delivered"];
 const STEP_LABELS = ["Yangi", "Qabul", "Tayyor", "Yetkazildi"];
