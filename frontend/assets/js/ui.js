@@ -132,3 +132,31 @@ export function confirmButton({ label, confirmLabel, className = "btn btn-danger
   });
   return button;
 }
+
+// Keyingi sahifada bir marta ko'rsatiladigan xabar. URL orqali uzatilmaydi: begona
+// havola ilova nomidan istalgan matnni chiqara olmasin.
+const FLASH_KEY = "lunch_flash";
+
+export function flash(message) {
+  try {
+    sessionStorage.setItem(FLASH_KEY, message);
+  } catch {
+    // saqlab bo'lmasa, xabarsiz davom etamiz
+  }
+}
+
+export function showFlash() {
+  try {
+    const message = sessionStorage.getItem(FLASH_KEY);
+    sessionStorage.removeItem(FLASH_KEY);
+    if (message) toast(message, "success");
+  } catch {
+    // sessionStorage yo'q bo'lsa ham sahifa ishlaydi
+  }
+}
+
+// URL'dagi `?id=` faqat musbat butun son bo'lsa qabul qilinadi.
+export function idFromUrl(name = "id") {
+  const value = new URLSearchParams(location.search).get(name);
+  return value && /^[1-9]\d{0,9}$/.test(value) ? value : null;
+}

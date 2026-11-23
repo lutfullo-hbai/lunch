@@ -4,7 +4,7 @@ import { renderNav } from "../layout.js";
 import { backButton, haptic, initTelegram } from "../telegram.js";
 import { icon } from "../icons.js";
 import { PAYMENT_LABELS, STATUS_LABELS } from "../labels.js";
-import { dateTime, el, emptyState, money, skeletonRows, toast } from "../ui.js";
+import { dateTime, el, emptyState, money, showFlash, skeletonRows, toast } from "../ui.js";
 
 initTelegram();
 await requireUser();
@@ -112,10 +112,6 @@ async function loadMore() {
 
 more.addEventListener("click", loadMore);
 
-const created = new URLSearchParams(location.search).get("created");
-if (created) {
-  toast(`Buyurtma #${created} qabul qilindi`, "success");
-  history.replaceState(null, "", location.pathname);
-}
+showFlash();
 list.replaceChildren(skeletonRows(3));
 await loadMore();

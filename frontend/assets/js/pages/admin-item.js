@@ -5,14 +5,19 @@ import { buildMultipart } from "../multipart.js";
 import { errorText, requireAdmin } from "../auth.js";
 import { ADMIN_LINKS, renderNav } from "../layout.js";
 import { backButton, haptic, initTelegram } from "../telegram.js";
-import { confirmButton, el, setBusy, toast } from "../ui.js";
+import { confirmButton, el, flash, idFromUrl, setBusy, toast } from "../ui.js";
 
 initTelegram();
 await requireAdmin();
 renderNav("admin-menu", ADMIN_LINKS);
 
 const LIST_PAGE = "/admin/menu.html";
-let itemId = new URLSearchParams(location.search).get("id");
+const rawId = new URLSearchParams(location.search).get("id");
+let itemId = idFromUrl();
+if (rawId !== null && itemId === null) {
+  location.replace(LIST_PAGE); // noto'g'ri id
+  await new Promise(() => {}); // sahifa almashguncha qolgan kod ishlamasin
+}
 const form = document.getElementById("item-form");
 const title = document.getElementById("title");
 const submit = form.querySelector("button[type=submit]");
@@ -31,7 +36,8 @@ backButton(() => leave(LIST_PAGE));
 
 function leave(url, message) {
   dirty = false;
-  location.assign(message ? `${url}?saved=${encodeURIComponent(message)}` : url);
+  if (message) flash(message);
+  location.assign(url);
 }
 
 // Saqlanmagan o'zgarish bilan sahifadan chiqishda brauzer ogohlantiradi.

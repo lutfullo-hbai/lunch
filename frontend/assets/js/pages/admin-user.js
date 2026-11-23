@@ -4,14 +4,18 @@ import { adminOrderCard } from "../admin-order-card.js";
 import { icon } from "../icons.js";
 import { ADMIN_LINKS, initials, renderNav } from "../layout.js";
 import { backButton, haptic, initTelegram } from "../telegram.js";
-import { confirmButton, dateTime, el, emptyState, skeletonRows, toast } from "../ui.js";
+import { confirmButton, dateTime, el, emptyState, idFromUrl, skeletonRows, toast } from "../ui.js";
 
 initTelegram();
 await requireAdmin();
 renderNav("admin-users", ADMIN_LINKS);
 backButton(() => location.assign("/admin/users.html"));
 
-const userId = new URLSearchParams(location.search).get("id");
+const userId = idFromUrl();
+if (userId === null) {
+  location.replace("/admin/users.html");
+  await new Promise(() => {}); // sahifa almashguncha qolgan kod ishlamasin
+}
 const profileBox = document.getElementById("profile");
 const ordersBox = document.getElementById("orders");
 const more = document.getElementById("more");

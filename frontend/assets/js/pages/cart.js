@@ -4,7 +4,7 @@ import { cartLines, cartTotal, clearCart, removeItems, setQuantity } from "../ca
 import { renderNav, updateCartBadge } from "../layout.js";
 import { backButton, haptic, initTelegram, mainButton } from "../telegram.js";
 import { icon } from "../icons.js";
-import { dishPhoto, el, emptyState, money, toast } from "../ui.js";
+import { dishPhoto, el, emptyState, flash, money, toast } from "../ui.js";
 
 initTelegram();
 await requireUser();
@@ -94,7 +94,8 @@ async function placeOrder() {
     });
     clearCart();
     haptic("success");
-    location.replace(`/orders.html?created=${order.id}`);
+    flash(`Buyurtma #${order.id} qabul qilindi`);
+    location.replace("/orders.html");
   } catch (error) {
     haptic("error");
     if (error.code === "ITEMS_UNAVAILABLE") {
